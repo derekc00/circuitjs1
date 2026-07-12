@@ -45,6 +45,12 @@ public class CommandManager {
     	if (item=="importfromdropbox") {
     		app.dialogShowing = new ImportFromDropboxDialog(app);
     	}
+    	if (item=="importspice") {
+    		app.dialogShowing = new SpiceImporter(app);
+    	}
+    	if (item=="exportspice") {
+    		SpiceExporter.doExport(app);
+    	}
     	if (item=="exportasurl") {
     		doExportAsUrl();
     		app.unsavedChanges = false;
