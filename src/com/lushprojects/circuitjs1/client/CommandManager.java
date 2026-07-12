@@ -45,6 +45,12 @@ public class CommandManager {
     	if (item=="importfromdropbox") {
     		app.dialogShowing = new ImportFromDropboxDialog(app);
     	}
+    	if (item=="savetolibrary") {
+    		app.dialogShowing = new SaveToLibraryDialog(app);
+    	}
+    	if (item=="mycircuits") {
+    		app.dialogShowing = new CircuitLibraryDialog(app);
+    	}
     	if (item=="exportasurl") {
     		doExportAsUrl();
     		app.unsavedChanges = false;

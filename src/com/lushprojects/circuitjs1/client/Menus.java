@@ -124,6 +124,8 @@ public class Menus {
 	    exportAsLocalFileItem.setEnabled(ExportAsLocalFileDialog.downloadIsSupported());
 	    fileMenuBar.addItem(exportAsLocalFileItem);
 	}
+	fileMenuBar.addItem(iconMenuItem("floppy", "Save to Library...", new MyCommand("file", "savetolibrary")));
+	fileMenuBar.addItem(iconMenuItem("folder", "My Circuits...", new MyCommand("file", "mycircuits")));
 	exportAsUrlItem = iconMenuItem("export", "Export As Link...", new MyCommand("file","exportasurl"));
 	fileMenuBar.addItem(exportAsUrlItem);
 	exportAsTextItem = iconMenuItem("export", "Export As Text...", new MyCommand("file","exportastext"));
