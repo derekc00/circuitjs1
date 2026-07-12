@@ -119,10 +119,12 @@ public class Scrollbar extends  Composite implements
 	}
 	
 	void draw() {
+		boolean dark = UIManager.darkModeActive;
+		g.setFillStyle(dark ? "#333333" : "#ffffff");
 		if (enabled)
-			g.setStrokeStyle("#000000");
+			g.setStrokeStyle(dark ? "#dddddd" : "#000000");
 		else
-			g.setStrokeStyle("lightgrey");
+			g.setStrokeStyle(dark ? "#555555" : "lightgrey");
 		g.setLineWidth(1.0);
 		g.fillRect(0,0,VERTICALPANELWIDTH,SCROLLHEIGHT);
 		g.beginPath();
@@ -150,7 +152,7 @@ public class Scrollbar extends  Composite implements
 			g.moveTo(HMARGIN+SCROLLHEIGHT+BARMARGIN, SCROLLHEIGHT/2);
 			g.lineTo(p, SCROLLHEIGHT/2);
 			g.stroke();
-			g.setStrokeStyle("#000000");
+			g.setStrokeStyle(dark ? "#dddddd" : "#000000");
 //			g.beginPath();
 //			g.moveTo(p, 0);
 //			g.lineTo(p, SCROLLHEIGHT);

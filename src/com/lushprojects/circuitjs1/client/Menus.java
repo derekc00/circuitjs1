@@ -61,6 +61,7 @@ public class Menus {
     CheckboxMenuItem euroResistorCheckItem;
     CheckboxMenuItem euroGatesCheckItem;
     CheckboxMenuItem printableCheckItem;
+    CheckboxMenuItem darkModeCheckItem;
     CheckboxMenuItem conventionCheckItem;
     CheckboxMenuItem noEditCheckItem;
     CheckboxMenuItem mouseWheelEditCheckItem;
@@ -271,6 +272,7 @@ public class Menus {
 	m.addItem(euroResistorCheckItem = new CheckboxMenuItem(Locale.LS("European Resistors")));
 	m.addItem(euroGatesCheckItem = new CheckboxMenuItem(Locale.LS("IEC Gates")));
 	m.addItem(printableCheckItem = new CheckboxMenuItem(Locale.LS("White Background")));
+	m.addItem(darkModeCheckItem = new CheckboxMenuItem(Locale.LS("Dark Mode")));
 
 	m.addItem(conventionCheckItem = new CheckboxMenuItem(Locale.LS("Conventional Current Motion")));
 	m.addItem(noEditCheckItem = new CheckboxMenuItem(Locale.LS("Disable Editing")));

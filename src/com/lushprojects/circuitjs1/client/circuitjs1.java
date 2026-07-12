@@ -47,6 +47,9 @@ public class circuitjs1 implements EntryPoint {
     // This is the program entrypoint! 
     // Called by gtw automagically (see circuitjs1.gwt.xml)
     public void onModuleLoad() {
+        // apply the saved (or system default) theme as early as possible to
+        // avoid a flash of the wrong theme while the simulator loads
+        UIManager.setDarkModeClass(UIManager.getSavedDarkMode());
         // loadLocale() launches the sim after determining the language (see below)
         loadLocale();
     }
