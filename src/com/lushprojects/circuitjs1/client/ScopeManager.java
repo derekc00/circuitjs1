@@ -398,5 +398,14 @@ public class ScopeManager {
 	    scopes[i].resetGraph(true);
     }
 
+    // clear measurement cursors on all scopes (docked and undocked)
+    void clearMeasureCursors() {
+	for (int i = 0; i != scopeCount; i++)
+	    scopes[i].clearMeasureCursors();
+	if (sim.scopeElmArr != null)
+	    for (int i = 0; i != sim.scopeElmArr.length; i++)
+		sim.scopeElmArr[i].elmScope.clearMeasureCursors();
+    }
+
     static int max(int a, int b) { return (a > b) ? a : b; }
 }

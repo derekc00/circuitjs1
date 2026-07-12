@@ -1099,6 +1099,7 @@ public class UIManager {
     		    }
     		}
     		if (code==KEY_ESCAPE){
+    			app.scopeManager.clearMeasureCursors();
     			setMouseMode(MouseManager.MODE_SELECT);
     			mouseModeStr = "Select";
 			updateToolbar();
