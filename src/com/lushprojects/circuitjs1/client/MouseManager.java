@@ -117,88 +117,240 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
 	doTouchHandlers(this, cv.getCanvasElement());
 	cv.addDomHandler(this, ContextMenuEvent.getType());
 	cv.addMouseWheelHandler(this);
+
+	// touch ergonomics: never scroll/zoom the page from the canvas, and no
+	// text selection or long-press callout while interacting with it
+	Style cvStyle = cv.getCanvasElement().getStyle();
+	cvStyle.setProperty("touchAction", "none");
+	cvStyle.setProperty("userSelect", "none");
+	cvStyle.setProperty("webkitUserSelect", "none");
+	cvStyle.setProperty("webkitTouchCallout", "none");
+	cvStyle.setProperty("webkitTapHighlightColor", "rgba(0,0,0,0)");
     }
 
     // install touch handlers
     // don't feel like rewriting this in java.  Anyway, java doesn't let us create mouse
     // events and dispatch them.
+    // Single-finger touches are translated into synthetic mouse events so all the normal
+    // mouse code runs unchanged; two-finger gestures (pinch zoom + pan) are handled
+    // entirely in java and never generate mouse events.  We call preventDefault() on
+    // every touchstart/touchend, so the browser never fires its own synthesized
+    // mousedown/mouseup/click after the touch, and our synthetic events are the only
+    // mouse events the canvas sees for a touch.
     native static void doTouchHandlers(MouseManager mm, CanvasElement cv) /*-{
-	// Set up touch events for mobile, etc
-	var lastTap;
-	var tmout;
-	var lastScale;
+	var lastTap = 0;		// timestamp of last tap, for double-tap detection
+	var lastTapX = 0, lastTapY = 0;
+	var tmout = null;		// long-press timer
+	var gesture = false;		// two-finger gesture in progress
+	var ignoreSingle = false;	// swallow leftover finger after a gesture ends
+	var longPressed = false;	// long press fired; swallow the rest of this touch
+	var startX = 0, startY = 0;	// where the current single touch started
 
-	cv.addEventListener("touchstart", function (e) {
-        	mousePos = getTouchPos(cv, e);
-  		var touch = e.touches[0];
-
-  		var etype = "mousedown";
-  		lastScale = 1;
-  		clearTimeout(tmout);
-  		e.preventDefault();
-
-  		if (e.timeStamp-lastTap < 300) {
-     		    etype = "dblclick";
-  		} else {
-  		    tmout = setTimeout(function() {
-  		        mm.@com.lushprojects.circuitjs1.client.MouseManager::longPress()();
-  		    }, 500);
-  		}
-  		lastTap = e.timeStamp;
-
-  		var touch1 = e.touches[0];
-  		var touch2 = e.touches[e.touches.length-1];
-  		lastScale = Math.hypot(touch1.clientX-touch2.clientX, touch1.clientY-touch2.clientY);
-  		var mouseEvent = new MouseEvent(etype, {
-    			clientX: .5*(touch1.clientX+touch2.clientX),
-    			clientY: .5*(touch1.clientY+touch2.clientY)
-  		});
-  		cv.dispatchEvent(mouseEvent);
-  		if (e.touches.length > 1)
-  		    mm.@com.lushprojects.circuitjs1.client.MouseManager::twoFingerTouch(II)(mouseEvent.clientX, mouseEvent.clientY - cv.getBoundingClientRect().y);
-	}, false);
-	cv.addEventListener("touchend", function (e) {
-  		var mouseEvent = new MouseEvent("mouseup", {});
-  		e.preventDefault();
-  		clearTimeout(tmout);
-  		cv.dispatchEvent(mouseEvent);
-	}, false);
-	cv.addEventListener("touchmove", function (e) {
-  		e.preventDefault();
-  		clearTimeout(tmout);
-  		var touch1 = e.touches[0];
-  		var touch2 = e.touches[e.touches.length-1];
-	        if (e.touches.length > 1) {
-  		    var newScale = Math.hypot(touch1.clientX-touch2.clientX, touch1.clientY-touch2.clientY);
-	            mm.@com.lushprojects.circuitjs1.client.MouseManager::zoomCircuit(D)(40*(Math.log(newScale)-Math.log(lastScale)));
-	            lastScale = newScale;
-	        }
-  		var mouseEvent = new MouseEvent("mousemove", {
-    			clientX: .5*(touch1.clientX+touch2.clientX),
-    			clientY: .5*(touch1.clientY+touch2.clientY)
-  		});
-  		cv.dispatchEvent(mouseEvent);
-	}, false);
-
-	// Get the position of a touch relative to the canvas
-	function getTouchPos(canvasDom, touchEvent) {
-  		var rect = canvasDom.getBoundingClientRect();
-  		return {
-    			x: touchEvent.touches[0].clientX - rect.left,
-    			y: touchEvent.touches[0].clientY - rect.top
-  		};
+	function dispatchMouse(etype, touch) {
+	    var mouseEvent = new MouseEvent(etype, {
+		clientX: touch.clientX,
+		clientY: touch.clientY
+	    });
+	    cv.dispatchEvent(mouseEvent);
 	}
 
+	// midpoint (canvas-relative) and distance between the first two touches
+	function midAndDist(e) {
+	    var rect = cv.getBoundingClientRect();
+	    var t1 = e.touches[0];
+	    var t2 = e.touches[1];
+	    return {
+		x: .5*(t1.clientX+t2.clientX) - rect.left,
+		y: .5*(t1.clientY+t2.clientY) - rect.top,
+		d: Math.hypot(t1.clientX-t2.clientX, t1.clientY-t2.clientY)
+	    };
+	}
+
+	function cancelLongPress() {
+	    if (tmout) { clearTimeout(tmout); tmout = null; }
+	}
+
+	cv.addEventListener("touchstart", function (e) {
+	    e.preventDefault();
+	    mm.@com.lushprojects.circuitjs1.client.MouseManager::touchInputSeen()();
+	    cancelLongPress();
+
+	    if (e.touches.length >= 2) {
+		// second finger down; abort any single-finger drag and start pinch/pan
+		ignoreSingle = false;
+		if (!gesture) {
+		    gesture = true;
+		    mm.@com.lushprojects.circuitjs1.client.MouseManager::cancelTouchDrag()();
+		}
+		var m = midAndDist(e);
+		mm.@com.lushprojects.circuitjs1.client.MouseManager::twoFingerStart(DDD)(m.x, m.y, m.d);
+		return;
+	    }
+	    if (gesture || ignoreSingle || longPressed)
+		return;
+
+	    var touch = e.touches[0];
+	    startX = touch.clientX;
+	    startY = touch.clientY;
+
+	    // double-tap: two quick taps close together = double click (edit element)
+	    if (e.timeStamp-lastTap < 300 &&
+		    Math.hypot(touch.clientX-lastTapX, touch.clientY-lastTapY) < 30) {
+		lastTap = 0;
+		dispatchMouse("dblclick", touch);
+		return;
+	    }
+	    lastTap = e.timeStamp;
+	    lastTapX = touch.clientX;
+	    lastTapY = touch.clientY;
+
+	    // long press with no significant movement opens the context menu
+	    tmout = setTimeout(function() {
+		tmout = null;
+		longPressed = true;
+		mm.@com.lushprojects.circuitjs1.client.MouseManager::longPress(II)(startX|0, startY|0);
+	    }, 500);
+	    dispatchMouse("mousedown", touch);
+	}, false);
+
+	cv.addEventListener("touchmove", function (e) {
+	    e.preventDefault();
+	    mm.@com.lushprojects.circuitjs1.client.MouseManager::touchInputSeen()();
+	    if (gesture) {
+		if (e.touches.length >= 2) {
+		    var m = midAndDist(e);
+		    mm.@com.lushprojects.circuitjs1.client.MouseManager::twoFingerMove(DDD)(m.x, m.y, m.d);
+		}
+		return;
+	    }
+	    if (ignoreSingle || longPressed)
+		return;
+	    var touch = e.touches[0];
+	    // cancel a pending long press only if the finger really moved
+	    if (tmout && Math.hypot(touch.clientX-startX, touch.clientY-startY) > 10)
+		cancelLongPress();
+	    dispatchMouse("mousemove", touch);
+	}, false);
+
+	var touchEnd = function (e) {
+	    if (e.cancelable)
+		e.preventDefault();
+	    mm.@com.lushprojects.circuitjs1.client.MouseManager::touchInputSeen()();
+	    cancelLongPress();
+	    if (gesture) {
+		if (e.touches.length >= 2) {
+		    // still pinching; rebase the gesture on the remaining fingers
+		    var m = midAndDist(e);
+		    mm.@com.lushprojects.circuitjs1.client.MouseManager::twoFingerStart(DDD)(m.x, m.y, m.d);
+		} else if (e.touches.length == 1) {
+		    // one finger left; ignore it until it lifts so we don't
+		    // accidentally drag an element right after a pinch
+		    gesture = false;
+		    ignoreSingle = true;
+		} else
+		    gesture = false;
+		return;
+	    }
+	    if (e.touches.length > 0)
+		return;
+	    if (ignoreSingle || longPressed) {
+		ignoreSingle = false;
+		longPressed = false;
+		return;
+	    }
+	    if (e.changedTouches.length > 0)
+		dispatchMouse("mouseup", e.changedTouches[0]);
+	};
+	cv.addEventListener("touchend", touchEnd, false);
+	cv.addEventListener("touchcancel", touchEnd, false);
     }-*/;
 
-    void longPress() {
-	doPopupMenu();
+    // ---- touch gesture support ----
+
+    // true if the most recent input event came from a touch screen; used to enlarge
+    // hit-test tolerances for fingers without changing mouse behavior
+    static boolean lastInputWasTouch = false;
+    static long lastTouchTime;
+
+    // pinch/pan gesture state (canvas coordinates/pixels)
+    double touchMidX, touchMidY, touchDist;
+
+    // called from JSNI on every touch event.  The synthetic mouse events we dispatch
+    // arrive synchronously afterwards, so mousePointerSeen() won't clear the flag for them.
+    void touchInputSeen() {
+	lastInputWasTouch = true;
+	lastTouchTime = System.currentTimeMillis();
     }
 
-    void twoFingerTouch(int x, int y) {
-	tempMouseMode = MODE_DRAG_ALL;
-	dragScreenX = x;
-	dragScreenY = y;
+    // called on real mouse events; any mouse event not immediately following a touch
+    // event must come from an actual mouse
+    void mousePointerSeen() {
+	if (lastInputWasTouch && System.currentTimeMillis()-lastTouchTime > 500)
+	    lastInputWasTouch = false;
+    }
+
+    // hit-test threshold (in grid units) for selecting wires/lines; bigger for fingers
+    static int hitTestThreshold() { return lastInputWasTouch ? 24 : 10; }
+
+    // squared distance threshold for grabbing posts/handles
+    int postGrabSq() { return lastInputWasTouch ? 225 : POSTGRABSQ; }
+    int postSelectSq() { return lastInputWasTouch ? 225 : 26; }
+
+    // abort an in-progress single-finger drag (a second finger went down, or a long
+    // press fired).  Deletes any half-created element rather than dropping it.
+    void cancelTouchDrag() {
+	mouseDragging = false;
+	dragging = false;
+	tempMouseMode = mouseMode;
+	selectedArea = null;
+	if (heldSwitchElm != null) {
+	    heldSwitchElm.mouseUp();
+	    heldSwitchElm = null;
+	}
+	if (dragElm != null) {
+	    dragElm.delete();
+	    dragElm = null;
+	}
+	sim.repaint();
+    }
+
+    // two-finger gesture started or rebased (finger count changed)
+    void twoFingerStart(double x, double y, double dist) {
+	touchMidX = x;
+	touchMidY = y;
+	touchDist = dist;
+    }
+
+    // combined pinch zoom + pan: keep the circuit point that was under the previous
+    // midpoint pinned under the new midpoint, at the new scale
+    void twoFingerMove(double x, double y, double dist) {
+	// circuit coordinates of the previous midpoint
+	double gx = (touchMidX-sim.transform[4])/sim.transform[0];
+	double gy = (touchMidY-sim.transform[5])/sim.transform[3];
+	double newScale = sim.transform[0];
+	if (touchDist > 0 && dist > 0) {
+	    newScale *= dist/touchDist;
+	    // same zoom limits as zoomCircuit()
+	    newScale = Math.max(newScale, .2);
+	    newScale = Math.min(newScale, 2.5);
+	}
+	sim.transform[0] = sim.transform[3] = newScale;
+	sim.transform[4] = x - gx*newScale;
+	sim.transform[5] = y - gy*newScale;
+	touchMidX = x;
+	touchMidY = y;
+	touchDist = dist;
+	zoomTime = System.currentTimeMillis();
+	sim.repaint();
+    }
+
+    void longPress(int clientX, int clientY) {
+	// don't leave a drag in progress while the menu is up
+	cancelTouchDrag();
+	menuClientX = clientX;
+	menuClientY = clientY;
+	if (!sim.dialogIsShowing())
+	    doPopupMenu();
     }
 
     int snapGrid(int x) {
@@ -662,6 +814,7 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
 
     public void onMouseMove(MouseMoveEvent e) {
     	e.preventDefault();
+    	mousePointerSeen();
     	mouseCursorX=e.getX();
     	mouseCursorY=e.getY();
     	if (mouseDragging) {
@@ -727,12 +880,19 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     	}
 
     	if (sim.circuitArea.contains(sx, sy)) {
-    	    if (mouseElm!=null && ( mouseElm.getHandleGrabbedClose(gx, gy, POSTGRABSQ, MINPOSTGRABSIZE)>=0)) {
+    	    if (mouseElm!=null && ( mouseElm.getHandleGrabbedClose(gx, gy, postGrabSq(), MINPOSTGRABSIZE)>=0)) {
     		newMouseElm=mouseElm;
     	    } else {
     		int bestDist = 100000000;
+    		// with a finger, also consider elements whose bounding box is close to
+    		// the touch point, not just under it
+    		int margin = lastInputWasTouch ? hitTestThreshold() : 0;
     		for (CircuitElm ce : ui.elmList) {
-		    if (ce.boundingBox.contains(gx, gy)) {
+		    Rectangle bb = ce.boundingBox;
+		    boolean inBox = (margin == 0) ? bb.contains(gx, gy) :
+			(gx >= bb.x-margin && gy >= bb.y-margin &&
+			 gx <= bb.x+bb.width+margin && gy <= bb.y+bb.height+margin);
+		    if (inBox) {
 			int dist = ce.getMouseDistance(gx, gy);
 			if (dist >= 0 && dist < bestDist) {
 			    bestDist = dist;
@@ -756,7 +916,7 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     		//	    // might still be close to a post
     		for (CircuitElm ce : ui.elmList) {
     			if (mouseMode==MODE_DRAG_POST ) {
-    				if (ce.getHandleGrabbedClose(gx, gy, POSTGRABSQ, 0)> 0)
+    				if (ce.getHandleGrabbedClose(gx, gy, postGrabSq(), 0)> 0)
     				{
     					newMouseElm = ce;
     					break;
@@ -767,7 +927,7 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     			for (j = 0; j != jn; j++) {
     				Point pt = ce.getPost(j);
     				//   int dist = Graphics.distanceSq(x, y, pt.x, pt.y);
-    				if (Graphics.distanceSq(pt.x, pt.y, gx, gy) < 26) {
+    				if (Graphics.distanceSq(pt.x, pt.y, gx, gy) < postSelectSq()) {
     					newMouseElm = ce;
     					mousePost = j;
     					break;
@@ -779,7 +939,7 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     		// look for post close to the mouse pointer
     		for (i = 0; i != newMouseElm.getPostCount(); i++) {
     			Point pt = newMouseElm.getPost(i);
-    			if (Graphics.distanceSq(pt.x, pt.y, gx, gy) < 26)
+    			if (Graphics.distanceSq(pt.x, pt.y, gx, gy) < postSelectSq())
     				mousePost = i;
     		}
     	}
@@ -972,6 +1132,7 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     public void onMouseDown(MouseDownEvent e) {
 //    public void mousePressed(MouseEvent e) {
     	e.preventDefault();
+    	mousePointerSeen();
 
     	// make sure canvas has focus, not stop button or something else, so all shortcuts work
     	ui.cv.setFocus(true);
@@ -1064,7 +1225,7 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
 
 	// IES - Grab resize handles in select mode if they are far enough apart and you are on top of them
 	if (tempMouseMode == MODE_SELECT && mouseElm!=null && !ui.isReadOnly() &&
-		mouseElm.getHandleGrabbedClose(gx, gy, POSTGRABSQ, MINPOSTGRABSIZE) >=0 &&
+		mouseElm.getHandleGrabbedClose(gx, gy, postGrabSq(), MINPOSTGRABSIZE) >=0 &&
 		!anySelectedButMouse())
 	    tempMouseMode = MODE_DRAG_POST;
 
