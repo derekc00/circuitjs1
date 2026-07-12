@@ -97,6 +97,10 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     // elements grabbed at mouse-down for DragRow/DragColumn (element + which endpoint)
     ArrayList<CircuitElm> dragRowColElms;
     ArrayList<Integer> dragRowColPosts;
+    // true while a mouse drag is navigating the minimap
+    boolean draggingMinimap;
+    // shift state during the current element-creation drag (inverts right-angle wire option)
+    boolean dragShiftHeld;
 
     MouseManager(CirSim sim, UIManager ui) {
 	this.sim = sim;
@@ -215,7 +219,35 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
 	return true;
     }
 
+    // should a new wire drag from A to B be routed as an L?  active when the
+    // "Draw Wires at Right Angles" option is on, temporarily inverted by shift
+    boolean rightAngleWiresActive() {
+	return sim.menus.rightAngleWiresCheckItem.getState() != dragShiftHeld;
+    }
+
+    // if elm is a plain wire being dragged out diagonally and right-angle routing is
+    // active, return the corner point of the L-route; otherwise null.
+    // rule: the first leg follows the dominant drag axis (mostly-horizontal drags go
+    // horizontal-then-vertical, mostly-vertical drags go vertical-then-horizontal).
+    Point getRightAngleBend(CircuitElm elm) {
+	if (elm == null || !(elm instanceof WireElm) || elm instanceof RoutedWireElm)
+	    return null;
+	if (!rightAngleWiresActive())
+	    return null;
+	int dx = elm.x2-elm.x;
+	int dy = elm.y2-elm.y;
+	if (dx == 0 || dy == 0)
+	    return null;	// already axis-aligned
+	if (Math.abs(dx) >= Math.abs(dy))
+	    return new Point(elm.x2, elm.y);	// horizontal first
+	return new Point(elm.x, elm.y2);	// vertical first
+    }
+
     public void mouseDragged(MouseMoveEvent e) {
+    	if (draggingMinimap) {
+    	    ui.minimap.navigateTo(e.getX(), e.getY());
+    	    return;
+    	}
     	// ignore right mouse button with no modifiers (needed on PC)
     	if (e.getNativeButton()==NativeEvent.BUTTON_RIGHT) {
     		if (!(e.isMetaKeyDown() ||
@@ -236,8 +268,10 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     	    return;
     	}
     	boolean changed = false;
-    	if (dragElm != null)
+    	if (dragElm != null) {
+    	    dragShiftHeld = e.isShiftKeyDown();
     	    dragElm.drag(gx, gy);
+    	}
     	boolean success = true;
     	switch (tempMouseMode) {
     	case MODE_DRAG_ALL:
@@ -634,6 +668,12 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     		mouseDragged(e);
     		return;
     	}
+    	// don't let hovering over the minimap select elements underneath it
+    	if (ui.minimap != null && ui.minimap.contains(e.getX(), e.getY())) {
+    		setMouseElm(null);
+    		sim.repaint();
+    		return;
+    	}
     	mouseSelect(e);
     	sim.scopeManager.scopeMenuSelected = -1;
     }
@@ -948,6 +988,16 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     	if (e.getNativeButton() != NativeEvent.BUTTON_LEFT && e.getNativeButton() != NativeEvent.BUTTON_MIDDLE)
     		return;
 
+    	// clicks/drags on the minimap navigate; don't let them fall through to editing
+    	if (ui.minimap != null && ui.minimap.contains(e.getX(), e.getY())) {
+    		draggingMinimap = true;
+    		mouseDragging = true;
+    		ui.minimap.navigateTo(e.getX(), e.getY());
+    		return;
+    	}
+
+    	dragShiftHeld = false;
+
     	// set mouseElm in case we are on mobile
     	mouseSelect(e);
 
@@ -1100,6 +1150,11 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
 
     public void onMouseUp(MouseUpEvent e) {
     	e.preventDefault();
+    	if (draggingMinimap) {
+    	    draggingMinimap = false;
+    	    mouseDragging = false;
+    	    return;
+    	}
     	mouseDragging=false;
     	Scope.finishCursorDrag();
 
@@ -1137,11 +1192,25 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
 			dragElm = null;
     		}
     		else {
+    			// if drawing wires at right angles, replace a diagonal wire drag
+    			// with an L-shaped route made of two wires
+    			WireElm secondWire = null;
+    			Point bend = getRightAngleBend(dragElm);
+    			if (bend != null) {
+    			    secondWire = new WireElm(bend.x, bend.y);
+    			    secondWire.drag(dragElm.x2, dragElm.y2);
+    			    dragElm.drag(bend.x, bend.y);
+    			}
     			// auto-split wires at the new element's endpoints before adding it
     			splitAt(dragElm.x, dragElm.y);
     			splitAt(dragElm.x2, dragElm.y2);
     			ui.elmList.addElement(dragElm);
     			dragElm.draggingDone();
+    			if (secondWire != null) {
+    			    splitAt(secondWire.x2, secondWire.y2);
+    			    ui.elmList.addElement(secondWire);
+    			    secondWire.draggingDone();
+    			}
     			circuitChanged = true;
     			sim.undoManager.writeRecoveryToStorage();
     			sim.unsavedChanges = true;

@@ -52,6 +52,8 @@ public class Menus {
     CheckboxMenuItem powerCheckItem;
     CheckboxMenuItem smallGridCheckItem;
     CheckboxMenuItem crossHairCheckItem;
+    CheckboxMenuItem minimapCheckItem;
+    CheckboxMenuItem rightAngleWiresCheckItem;
     CheckboxMenuItem showValuesCheckItem;
     CheckboxMenuItem conductanceCheckItem;
     CheckboxMenuItem euroResistorCheckItem;
@@ -225,7 +227,17 @@ public class Menus {
 		    sim.setOptionInStorage("crossHair", crossHairCheckItem.getState());
 		}
 	}));
-	
+	m.addItem(minimapCheckItem = new CheckboxMenuItem(Locale.LS("Show Minimap"),
+		new Command() { public void execute(){
+		    sim.setOptionInStorage("showMinimap", minimapCheckItem.getState());
+		}
+	}));
+	m.addItem(rightAngleWiresCheckItem = new CheckboxMenuItem(Locale.LS("Draw Wires at Right Angles"),
+		new Command() { public void execute(){
+		    sim.setOptionInStorage("rightAngleWires", rightAngleWiresCheckItem.getState());
+		}
+	}));
+
 	m.addItem(euroResistorCheckItem = new CheckboxMenuItem(Locale.LS("European Resistors")));
 	m.addItem(euroGatesCheckItem = new CheckboxMenuItem(Locale.LS("IEC Gates")));
 	m.addItem(printableCheckItem = new CheckboxMenuItem(Locale.LS("White Background")));
