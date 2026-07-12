@@ -70,6 +70,10 @@ public class CommandManager {
 		doCreateSubcircuit();
     	if (item=="dcanalysis")
     	    	doDCAnalysis();
+    	if (item=="frequencyresponse") {
+    	    	app.dialogShowing = new FrequencyAnalysisDialog(app);
+    	    	app.dialogShowing.show();
+    	}
     	if (item=="print")
     	    	app.imageExporter.doPrint();
     	if (item=="recover")
