@@ -59,6 +59,7 @@ public class UIManager {
     Scrollbar powerBar;
     PopupPanel contextPanel = null;
     MouseManager mouse;
+    Minimap minimap;
 
     String mouseModeStr = "Select";
 
@@ -203,6 +204,8 @@ public class UIManager {
 	menus.toolbarCheckItem.setState(!hideMenu && !noEditing && !hideSidebar &&
 		app.startCircuit == null && app.startCircuitText == null && app.startCircuitLink == null);
 	menus.crossHairCheckItem.setState(getOptionFromStorage("crossHair", false));
+	menus.minimapCheckItem.setState(getOptionFromStorage("showMinimap", true));
+	menus.rightAngleWiresCheckItem.setState(getOptionFromStorage("rightAngleWires", false));
 	menus.euroResistorCheckItem.setState(euroSetting);
 	menus.euroResistorCheckItem.setCommand(
 		new Command() { public void execute(){
@@ -365,6 +368,7 @@ public class UIManager {
 	setGrid();
 	
 	app.mouse = mouse = new MouseManager(app, this);
+	minimap = new Minimap(this);
 	mouse.register(cv);
 	mouse.enableDisableMenuItems();
 	setiFrameHeight();
@@ -685,7 +689,16 @@ public class UIManager {
         }
 
         if (mouse.dragElm != null && (mouse.dragElm.x != mouse.dragElm.x2 || mouse.dragElm.y != mouse.dragElm.y2)) {
-            mouse.dragElm.draw(g);
+            // when drawing wires at right angles, show the L-shaped route the wire will take
+            Point bend = mouse.getRightAngleBend(mouse.dragElm);
+            if (bend != null) {
+                g.setColor(CircuitElm.selectColor);
+                g.setLineWidth(3.0);
+                g.drawLine(mouse.dragElm.x, mouse.dragElm.y, bend.x, bend.y);
+                g.drawLine(bend.x, bend.y, mouse.dragElm.x2, mouse.dragElm.y2);
+                g.setLineWidth(1.0);
+            } else
+                mouse.dragElm.draw(g);
             mouse.dragElm.drawHandles(g, CircuitElm.selectColor);
         }
 
@@ -717,6 +730,9 @@ public class UIManager {
         perfmon.startContext("drawBottomArea()");
         drawBottomArea(g);
         perfmon.stopContext();
+
+        if (minimap != null)
+            minimap.draw(g);
 
         g.setColor(Color.white);
 
