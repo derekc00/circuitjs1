@@ -35,6 +35,7 @@ import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.RootPanel;
+import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.Widget;
 import com.lushprojects.circuitjs1.client.util.Locale;
@@ -74,6 +75,10 @@ public class UIManager {
 
     Toolbar toolbar;
     SubcircuitBar subcircuitBar;
+    PaletteBar paletteBar;
+    ScrollPanel paletteScroll;
+    boolean paletteVisible;
+    boolean paletteCollapsed;
 
     DockLayoutPanel layoutPanel;
     VerticalPanel verticalPanel;
@@ -260,6 +265,16 @@ public class UIManager {
 	    layoutPanel.addEast(verticalPanel, VERTICALPANELWIDTH);
 	}
 	layoutPanel.addNorth(toolbar, TOOLBARHEIGHT);
+
+	// component palette, docked west of the canvas; hidden by default
+	paletteBar = new PaletteBar(this);
+	paletteScroll = new ScrollPanel(paletteBar);
+	paletteScroll.setStyleName("paletteScroll");
+	layoutPanel.addWest(paletteScroll, PaletteBar.WIDTH);
+	menus.paletteCheckItem.setState(getOptionFromStorage("showPalette", false));
+	paletteVisible = menus.paletteCheckItem.getState();
+	layoutPanel.setWidgetHidden(paletteScroll, !paletteVisible);
+
 	menuBar.getElement().insertFirst(menuBar.getElement().getChild(1));
 	menuBar.getElement().getFirstChildElement().setAttribute("onclick", "document.getElementsByClassName('toptrigger')[0].checked = false");
 	RootLayoutPanel.get().add(layoutPanel);
@@ -405,6 +420,8 @@ public class UIManager {
 
     	if (!app.isMobile(sidePanelCheckboxLabel))
     	    width=width - VERTICALPANELWIDTH;
+	if (paletteVisible)
+	    width -= paletteCollapsed ? PaletteBar.COLLAPSED_WIDTH : PaletteBar.WIDTH;
 	if (menus.toolbarCheckItem.getState())
 	    height -= TOOLBARHEIGHT;
 
@@ -893,12 +910,28 @@ public class UIManager {
 	setCanvasSize();
     }
 
+    void setPalette() {
+	paletteVisible = menus.paletteCheckItem.getState();
+	setOptionInStorage("showPalette", paletteVisible);
+	layoutPanel.setWidgetHidden(paletteScroll, !paletteVisible);
+	setCanvasSize();
+    }
+
+    // called by PaletteBar's collapse/expand affordance
+    void setPaletteCollapsed(boolean c) {
+	paletteCollapsed = c;
+	layoutPanel.setWidgetSize(paletteScroll, c ? PaletteBar.COLLAPSED_WIDTH : PaletteBar.WIDTH);
+	setCanvasSize();
+    }
+
     void updateToolbar() {
 	if (mouse.dragElm != null)
 	    toolbar.setModeLabel(Locale.LS("Drag Mouse"));
 	else
 	    toolbar.setModeLabel(Locale.LS("Mode: ") + app.classToLabelMap.get(mouseModeStr));
 	toolbar.highlightButton(mouseModeStr);
+	if (paletteBar != null)
+	    paletteBar.highlightButton(mouseModeStr);
     }
 
     void pushSubcircuit(CustomCompositeElm cce, Vector<CircuitElm> allElms) {

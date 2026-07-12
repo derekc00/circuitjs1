@@ -539,6 +539,8 @@ public class CirSim implements NativePreviewHandler {
 
     void setToolbar() { ui.setToolbar(); }
 
+    void setPalette() { ui.setPalette(); }
+
 
     void setMouseMode(int mode) { ui.setMouseMode(mode); }
     
