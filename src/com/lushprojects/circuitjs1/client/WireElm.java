@@ -218,7 +218,7 @@ import java.util.ArrayList;
 	}
 
 	int getMouseDistance(int gx, int gy) {
-	    int thresh = 10;
+	    int thresh = MouseManager.hitTestThreshold();
 	    int d2 = lineDistanceSq(x, y, x2, y2, gx, gy);
 	    if (d2 <= thresh*thresh)
 		return d2;
