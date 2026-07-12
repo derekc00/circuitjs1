@@ -228,6 +228,19 @@ public class UIManager {
 	});
 	menus.printableCheckItem.setState(printable);
 
+	boolean darkMode = false;
+	try {
+	    darkMode = qp.getBooleanValue("darkMode", getOptionFromStorage("darkMode", systemPrefersDarkScheme()));
+	} catch (Exception e) { }
+	menus.darkModeCheckItem.setCommand(
+		new Command() { public void execute(){
+		    setOptionInStorage("darkMode", menus.darkModeCheckItem.getState());
+		    applyDarkMode();
+		}
+	});
+	menus.darkModeCheckItem.setState(darkMode);
+	setDarkModeClass(darkMode);
+
 	menus.conventionCheckItem.setCommand(
 		new Command() { public void execute(){
 		    setOptionInStorage("conventionalCurrent", menus.conventionCheckItem.getState());
@@ -573,7 +586,7 @@ public class UIManager {
 
         Graphics g = new Graphics(cvcontext);
 
-        if (menus.printableCheckItem.getState()) {
+        if (app.isPrintable()) {
             CircuitElm.whiteColor = Color.black;
             CircuitElm.lightGrayColor = Color.black;
             g.setColor(Color.white);
@@ -777,7 +790,7 @@ public class UIManager {
 	}
 	if (app.stopMessage != null && app.circuitArea.height > canvasHeight-30)
 	    h = 30;
-	g.setColor(menus.printableCheckItem.getState() ? "#eee" : "#111");
+	g.setColor(app.isPrintable() ? "#eee" : "#111");
 	g.fillRect(leftX, app.circuitArea.height-h, app.circuitArea.width, canvasHeight - app.circuitArea.height+h);
 	g.setFont(CircuitElm.unitsFont);
 	int ct = app.scopeManager.scopeCount;
@@ -864,9 +877,65 @@ public class UIManager {
     }
 
     Color getBackgroundColor() {
-	if (menus.printableCheckItem.getState())
+	if (app.isPrintable())
 	    return Color.white;
 	return Color.black;
+    }
+
+    // ---- Dark Mode / Theming ----
+
+    // current dark mode state; static so widgets (e.g. Scrollbar) can consult
+    // it without needing a UIManager reference
+    static boolean darkModeActive;
+
+    static native boolean systemPrefersDarkScheme() /*-{
+	return !!($wnd.matchMedia && $wnd.matchMedia('(prefers-color-scheme: dark)').matches);
+    }-*/;
+
+    // read the saved dark mode preference, defaulting to the browser's
+    // prefers-color-scheme when no preference has been saved yet
+    static boolean getSavedDarkMode() {
+	boolean dark = systemPrefersDarkScheme();
+	Storage stor = Storage.getLocalStorageIfSupported();
+	if (stor != null) {
+	    String s = stor.getItem("darkMode");
+	    if (s != null)
+		dark = s.equals("true");
+	}
+	return dark;
+    }
+
+    // toggle the CSS class that themes the UI chrome (menu bar, dialogs,
+    // side panel, ...). Set on the document element so it also applies to
+    // popups attached directly to the body.
+    static void setDarkModeClass(boolean dark) {
+	darkModeActive = dark;
+	if (dark)
+	    Document.get().getDocumentElement().addClassName("darkmode");
+	else
+	    Document.get().getDocumentElement().removeClassName("darkmode");
+    }
+
+    boolean isDarkMode() { return menus.darkModeCheckItem.getState(); }
+
+    // apply the current dark mode setting to the UI chrome and canvas
+    void applyDarkMode() {
+	setDarkModeClass(isDarkMode());
+	int i;
+	if (scopeManager != null)
+	    for (i = 0; i < scopeManager.scopeCount; i++)
+		scopeManager.scopes[i].setRect(scopeManager.scopes[i].rect);
+	// redraw canvas-based scrollbars so they pick up the new palette
+	if (speedBar != null) speedBar.draw();
+	if (currentBar != null) currentBar.draw();
+	if (powerBar != null) powerBar.draw();
+	if (app.adjustables != null)
+	    for (i = 0; i != app.adjustables.size(); i++) {
+		Adjustable adj = app.adjustables.get(i);
+		if (adj.slider != null)
+		    adj.slider.draw();
+	    }
+	repaint();
     }
 
     // ---- UI Controls ----

@@ -26,6 +26,7 @@ public class Toolbar extends FlowPanel {
 
     public Toolbar() {
         // Set the overall style of the toolbar
+	getElement().addClassName("circuit-toolbar"); // hook for dark mode CSS
 	Style style = getElement().getStyle();
         style.setPadding(2, Style.Unit.PX);
         style.setBackgroundColor("#f8f8f8");
@@ -218,6 +219,7 @@ public class Toolbar extends FlowPanel {
     }
 
     private void styleModeLabel(Label label) {
+	label.getElement().addClassName("toolbar-mode-label"); // hook for dark mode CSS
 	Style style = label.getElement().getStyle();
         style.setFontSize(16, Style.Unit.PX);
         style.setColor("#333");
@@ -230,6 +232,7 @@ public class Toolbar extends FlowPanel {
         if (activeButton != null) {
             activeButton.getElement().getStyle().setColor("#333"); // Reset color
             activeButton.getElement().getStyle().setBackgroundColor(null);
+            activeButton.getElement().removeClassName("toolbar-active");
         }
 
         // Activate the new button
@@ -237,6 +240,7 @@ public class Toolbar extends FlowPanel {
         if (newActiveButton != null) {
             newActiveButton.getElement().getStyle().setColor("#007bff"); // Active color
             newActiveButton.getElement().getStyle().setBackgroundColor("#e6f7ff");
+            newActiveButton.getElement().addClassName("toolbar-active");
             activeButton = newActiveButton;
         }
     }

@@ -170,7 +170,7 @@ public class ScopeManager {
 		return;
 	}
 	hoverScope.setRect(scopeRect);
-	g.setColor(sim.menus.printableCheckItem.getState() ? Color.white : Color.black);
+	g.setColor(sim.isPrintable() ? Color.white : Color.black);
 	g.fillRect(canvasWidth - w, y, w, h);
 	hoverScope.draw(g);
     }
