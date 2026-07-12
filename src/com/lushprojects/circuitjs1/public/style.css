@@ -5,6 +5,87 @@
 	display: none;
 }
 
+/* component palette sidebar */
+.paletteScroll {
+	background: #f8f8f8;
+	border-right: 1px solid #ccc;
+}
+.paletteTop {
+	display: flex;
+	align-items: center;
+	padding: 2px;
+}
+.paletteTitle {
+	flex: 1;
+	font-weight: bold;
+	font-size: 13px;
+	padding-left: 3px;
+	white-space: nowrap;
+	overflow: hidden;
+}
+.paletteCollapse {
+	cursor: pointer;
+	padding: 0 4px;
+	font-size: 15px;
+	color: #555;
+	user-select: none;
+}
+.paletteCollapse:hover {
+	color: #007bff;
+}
+.paletteSearch {
+	display: block;
+	width: calc(100% - 8px);
+	margin: 2px 4px 4px 4px;
+	box-sizing: border-box;
+	font-size: 12px;
+}
+.paletteHeader {
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: bold;
+	padding: 3px 4px;
+	background: #e8e8e8;
+	border-top: 1px solid #ddd;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	user-select: none;
+}
+.paletteHeader:hover {
+	background: #ddd;
+}
+.paletteButton {
+	display: flex;
+	align-items: center;
+	font-size: 12px;
+	color: #333;
+	padding: 1px 2px 1px 6px;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+}
+.paletteButton:hover {
+	background: #e6f7ff;
+}
+.paletteButtonActive, .paletteButtonActive:hover {
+	background: #cce8ff;
+	color: #007bff;
+}
+.paletteIcon {
+	width: 20px;
+	height: 18px;
+	flex: none;
+	margin-right: 3px;
+}
+.paletteIcon svg {
+	vertical-align: middle;
+}
+.paletteLabel {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 @media only screen and (max-width: 600px) {
 	.triggerLabel {
 		display: initial;
@@ -122,6 +203,10 @@
 	}
 	/* added extra div for toolbar */
 	.trigger+.triggerLabel+div+div+div {
+		width: 100% !important;
+	}
+	/* added extra div for component palette */
+	.trigger+.triggerLabel+div+div+div+div {
 		width: 100% !important;
 	}
 }
