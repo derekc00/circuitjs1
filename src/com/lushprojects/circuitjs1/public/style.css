@@ -5,6 +5,87 @@
 	display: none;
 }
 
+/* component palette sidebar */
+.paletteScroll {
+	background: #f8f8f8;
+	border-right: 1px solid #ccc;
+}
+.paletteTop {
+	display: flex;
+	align-items: center;
+	padding: 2px;
+}
+.paletteTitle {
+	flex: 1;
+	font-weight: bold;
+	font-size: 13px;
+	padding-left: 3px;
+	white-space: nowrap;
+	overflow: hidden;
+}
+.paletteCollapse {
+	cursor: pointer;
+	padding: 0 4px;
+	font-size: 15px;
+	color: #555;
+	user-select: none;
+}
+.paletteCollapse:hover {
+	color: #007bff;
+}
+.paletteSearch {
+	display: block;
+	width: calc(100% - 8px);
+	margin: 2px 4px 4px 4px;
+	box-sizing: border-box;
+	font-size: 12px;
+}
+.paletteHeader {
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: bold;
+	padding: 3px 4px;
+	background: #e8e8e8;
+	border-top: 1px solid #ddd;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	user-select: none;
+}
+.paletteHeader:hover {
+	background: #ddd;
+}
+.paletteButton {
+	display: flex;
+	align-items: center;
+	font-size: 12px;
+	color: #333;
+	padding: 1px 2px 1px 6px;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+}
+.paletteButton:hover {
+	background: #e6f7ff;
+}
+.paletteButtonActive, .paletteButtonActive:hover {
+	background: #cce8ff;
+	color: #007bff;
+}
+.paletteIcon {
+	width: 20px;
+	height: 18px;
+	flex: none;
+	margin-right: 3px;
+}
+.paletteIcon svg {
+	vertical-align: middle;
+}
+.paletteLabel {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 @media only screen and (max-width: 600px) {
 	.triggerLabel {
 		display: initial;
@@ -123,5 +204,217 @@
 	/* added extra div for toolbar */
 	.trigger+.triggerLabel+div+div+div {
 		width: 100% !important;
+	}
+	/* added extra div for component palette */
+	.trigger+.triggerLabel+div+div+div+div {
+		width: 100% !important;
+	}
+}
+
+/* ==================== Dark Mode ==================== */
+/* All rules below only apply when the "darkmode" class is present on the
+   document element (Options -> Dark Mode).  The default light theme above
+   and in the GWT Clean theme is left untouched. */
+
+.darkmode {
+	color-scheme: dark;
+	scrollbar-color: #555555 #2b2b2b;
+	background-color: #1e1e1e;
+}
+.darkmode body {
+	background-color: #1e1e1e;
+	color: #d4d4d4;
+}
+
+/* --- menu bar and menu popups (GWT Clean theme MenuBar/MenuItem) --- */
+.darkmode .gwt-MenuBar-horizontal {
+	background: #252526 none;
+	border-color: #3c3c3c;
+}
+.darkmode .gwt-MenuBar-vertical {
+	background: #252526;
+}
+.darkmode .gwt-MenuBar .gwt-MenuItem,
+.darkmode .gwt-MenuBar-horizontal .gwt-MenuItem,
+.darkmode .gwt-MenuBar-vertical .gwt-MenuItem {
+	color: #d4d4d4;
+}
+.darkmode .gwt-MenuBar-horizontal .gwt-MenuItem-selected,
+.darkmode .gwt-MenuBar-vertical .gwt-MenuItem-selected {
+	background: #094771;
+	color: #ffffff;
+}
+.darkmode .gwt-MenuBar .gwt-MenuItem-disabled,
+.darkmode .gwt-MenuBar-horizontal .gwt-MenuItem-disabled,
+.darkmode .gwt-MenuBar-vertical .gwt-MenuItem-disabled {
+	color: #6a6a6a;
+}
+.darkmode .gwt-MenuItemSeparator .menuSeparatorInner {
+	border-top: 1px solid #3c3c3c;
+}
+/* popup border/shadow cells (Clean theme uses light gradient images here) */
+.darkmode .menuPopupTopLeft, .darkmode .menuPopupTopLeftInner,
+.darkmode .menuPopupTopCenter, .darkmode .menuPopupTopCenterInner,
+.darkmode .menuPopupTopRight, .darkmode .menuPopupTopRightInner,
+.darkmode .menuPopupMiddleLeft, .darkmode .menuPopupMiddleLeftInner,
+.darkmode .menuPopupMiddleCenter, .darkmode .menuPopupMiddleCenterInner,
+.darkmode .menuPopupMiddleRight, .darkmode .menuPopupMiddleRightInner,
+.darkmode .menuPopupBottomLeft, .darkmode .menuPopupBottomLeftInner,
+.darkmode .menuPopupBottomCenter, .darkmode .menuPopupBottomCenterInner,
+.darkmode .menuPopupBottomRight, .darkmode .menuPopupBottomRightInner {
+	background: #252526 none !important;
+}
+
+/* --- dialogs (GWT Clean theme DialogBox) --- */
+.darkmode .gwt-DialogBox .Caption {
+	background: #2d2d30 none !important;
+	color: #e0e0e0;
+	border-top-color: #3c3c3c !important;
+	border-bottom-color: #3c3c3c !important;
+}
+.darkmode .gwt-DialogBox .dialogMiddleCenter {
+	background: #252526 !important;
+	color: #d4d4d4;
+}
+.darkmode .gwt-DialogBox .dialogTopLeft, .darkmode .gwt-DialogBox .dialogTopLeftInner,
+.darkmode .gwt-DialogBox .dialogTopCenter, .darkmode .gwt-DialogBox .dialogTopCenterInner,
+.darkmode .gwt-DialogBox .dialogTopRight, .darkmode .gwt-DialogBox .dialogTopRightInner,
+.darkmode .gwt-DialogBox .dialogMiddleLeft, .darkmode .gwt-DialogBox .dialogMiddleLeftInner,
+.darkmode .gwt-DialogBox .dialogMiddleRight, .darkmode .gwt-DialogBox .dialogMiddleRightInner,
+.darkmode .gwt-DialogBox .dialogBottomLeft, .darkmode .gwt-DialogBox .dialogBottomLeftInner,
+.darkmode .gwt-DialogBox .dialogBottomCenter, .darkmode .gwt-DialogBox .dialogBottomCenterInner,
+.darkmode .gwt-DialogBox .dialogBottomRight, .darkmode .gwt-DialogBox .dialogBottomRightInner {
+	background: #252526 none !important;
+}
+
+/* --- plain popups (context menu, scroll value popup, ...) --- */
+.darkmode .gwt-PopupPanel {
+	background: #252526 !important;
+	border-color: #3c3c3c !important;
+}
+.darkmode .gwt-PopupPanel .popupContent {
+	background: #252526;
+	color: #d4d4d4;
+}
+
+/* --- buttons --- */
+.darkmode .gwt-Button {
+	background: #3a3d41 none;
+	color: #e0e0e0;
+	border-color: #555555;
+}
+.darkmode .gwt-Button:hover {
+	background-color: #45494e;
+	border-color: #666666;
+}
+.darkmode .gwt-Button[disabled] {
+	color: #777777;
+	background-color: #303134;
+}
+.darkmode .topButton {
+	background-color: #3a3d41;
+	color: #e0e0e0;
+	border-color: #555555;
+	border-bottom-color: #4a4a4a;
+}
+/* keep the red RUN/STOP and black/white scope channel buttons as-is */
+
+/* --- text inputs, list boxes --- */
+.darkmode input[type="text"],
+.darkmode input[type="number"],
+.darkmode input[type="password"],
+.darkmode textarea,
+.darkmode select,
+.darkmode .gwt-TextBox,
+.darkmode .gwt-TextArea,
+.darkmode .gwt-ListBox {
+	background-color: #1a1a1a;
+	color: #d4d4d4;
+	border-color: #3c3c3c;
+}
+
+/* --- misc labels --- */
+.darkmode .gwt-Label-selected {
+	border-top-color: #d4d4d4;
+	border-bottom-color: #d4d4d4;
+}
+.darkmode .gwt-Label-1off {
+	color: #9a9a9a;
+}
+.darkmode .gwt-Label-2off {
+	color: #6a6a6a;
+}
+.darkmode .disabled {
+	color: #6a6a6a;
+}
+.darkmode .gwt-MenuItem-disabled {
+	color: #6a6a6a;
+}
+
+/* --- side panel and its iframe (iframe content is transparent) --- */
+.darkmode .verticalPanel {
+	background-color: #1e1e1e;
+	color: #d4d4d4;
+}
+.darkmode .gwt-Frame {
+	background-color: #1e1e1e;
+}
+
+/* --- toolbar (light colors are set inline, so !important is needed) --- */
+.darkmode .circuit-toolbar {
+	background-color: #252526 !important;
+	border-color: #3c3c3c !important;
+}
+.darkmode .circuit-toolbar .gwt-Label {
+	color: #cccccc !important;
+}
+.darkmode .circuit-toolbar .gwt-Label:hover {
+	color: #4dabf7 !important;
+}
+.darkmode .circuit-toolbar .toolbar-mode-label,
+.darkmode .circuit-toolbar .toolbar-mode-label:hover {
+	color: #cccccc !important;
+	background-color: transparent !important;
+}
+.darkmode .circuit-toolbar .toolbar-active,
+.darkmode .circuit-toolbar .toolbar-active:hover {
+	color: #4dabf7 !important;
+	background-color: #113a5c !important;
+}
+/* some toolbar SVG icons hardcode black strokes; follow the label color */
+.darkmode .circuit-toolbar svg path,
+.darkmode .palette-container svg path {
+	stroke: currentColor;
+}
+.darkmode .palette-container {
+	background-color: #252526 !important;
+	border-color: #3c3c3c !important;
+}
+.darkmode .palette-container .gwt-Label {
+	color: #cccccc !important;
+}
+.darkmode .palette-container .gwt-Label:hover {
+	color: #4dabf7 !important;
+}
+
+/* --- subcircuit/context bar (light colors are set inline) --- */
+.darkmode .subcircuit-bar {
+	background: rgba(37, 37, 38, 0.85) !important;
+	border-bottom-color: #3c3c3c !important;
+}
+.darkmode .subcircuit-bar .gwt-InlineLabel {
+	color: #d4d4d4 !important;
+}
+
+/* --- mobile layout (overrides the white backgrounds set above) --- */
+.darkmode .triggerLabel {
+	background: #252526;
+}
+.darkmode .trigger+.triggerLabel+div {
+	background: #1e1e1e;
+}
+@media only screen and (max-width: 600px) {
+	.darkmode .gwt-MenuBar-horizontal>table {
+		background: #252526;
 	}
 }

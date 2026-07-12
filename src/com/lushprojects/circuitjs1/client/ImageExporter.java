@@ -147,13 +147,14 @@ public class ImageExporter {
 
 	        double scale = 1;
 
-		// turn on white background, turn off current display
-		boolean p = sim.menus.printableCheckItem.getState();
+		// turn on white background, turn off current display.
+		// use printableOverride so printing is white even in dark mode;
+		// other exports match the effective on-screen background.
 		boolean c = sim.menus.dotsCheckItem.getState();
 		boolean print = (type == CAC_PRINT);
 		if (print)
-		    sim.menus.printableCheckItem.setState(true);
-	        if (sim.menus.printableCheckItem.getState()) {
+		    sim.printableOverride = true;
+	        if (sim.isPrintable()) {
 	            CircuitElm.whiteColor = Color.black;
 	            CircuitElm.lightGrayColor = Color.black;
 	            g.setColor(Color.white);
@@ -189,7 +190,7 @@ public class ImageExporter {
 		}
 
 		// restore everything
-		sim.menus.printableCheckItem.setState(p);
+		sim.printableOverride = false;
 		sim.menus.dotsCheckItem.setState(c);
 		sim.transform = oldTransform;
 	}

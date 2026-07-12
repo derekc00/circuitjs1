@@ -45,6 +45,18 @@ public class CommandManager {
     	if (item=="importfromdropbox") {
     		app.dialogShowing = new ImportFromDropboxDialog(app);
     	}
+    	if (item=="savetolibrary") {
+    		app.dialogShowing = new SaveToLibraryDialog(app);
+    	}
+    	if (item=="mycircuits") {
+    		app.dialogShowing = new CircuitLibraryDialog(app);
+    	}
+    	if (item=="importspice") {
+    		app.dialogShowing = new SpiceImporter(app);
+    	}
+    	if (item=="exportspice") {
+    		SpiceExporter.doExport(app);
+    	}
     	if (item=="exportasurl") {
     		doExportAsUrl();
     		app.unsavedChanges = false;
@@ -70,6 +82,10 @@ public class CommandManager {
 		doCreateSubcircuit();
     	if (item=="dcanalysis")
     	    	doDCAnalysis();
+    	if (item=="frequencyresponse") {
+    	    	app.dialogShowing = new FrequencyAnalysisDialog(app);
+    	    	app.dialogShowing.show();
+    	}
     	if (item=="print")
     	    	app.imageExporter.doPrint();
     	if (item=="recover")
@@ -263,6 +279,8 @@ public class CommandManager {
     			s.selectY();
     		if (item=="reset")
     			s.resetGraph(true);
+    		if (item=="clearcursors")
+    			s.clearMeasureCursors();
     		if (item=="exportcsv")
     			s.exportCSV();
     		if (item=="properties")

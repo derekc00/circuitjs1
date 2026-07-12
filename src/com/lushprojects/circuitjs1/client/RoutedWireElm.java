@@ -305,7 +305,7 @@ import com.google.gwt.xml.client.Element;
 	}
 
 	int getMouseDistance(int gx, int gy) {
-	    int thresh = 10;
+	    int thresh = MouseManager.hitTestThreshold();
 	    int best = Integer.MAX_VALUE;
 	    for (int i = 0; i < routePoints.size() - 1; i++) {
 		Point a = routePoints.get(i);

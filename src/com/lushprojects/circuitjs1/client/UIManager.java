@@ -35,6 +35,7 @@ import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.RootPanel;
+import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.Widget;
 import com.lushprojects.circuitjs1.client.util.Locale;
@@ -59,6 +60,7 @@ public class UIManager {
     Scrollbar powerBar;
     PopupPanel contextPanel = null;
     MouseManager mouse;
+    Minimap minimap;
 
     String mouseModeStr = "Select";
 
@@ -74,6 +76,10 @@ public class UIManager {
 
     Toolbar toolbar;
     SubcircuitBar subcircuitBar;
+    PaletteBar paletteBar;
+    ScrollPanel paletteScroll;
+    boolean paletteVisible;
+    boolean paletteCollapsed;
 
     DockLayoutPanel layoutPanel;
     VerticalPanel verticalPanel;
@@ -203,6 +209,8 @@ public class UIManager {
 	menus.toolbarCheckItem.setState(!hideMenu && !noEditing && !hideSidebar &&
 		app.startCircuit == null && app.startCircuitText == null && app.startCircuitLink == null);
 	menus.crossHairCheckItem.setState(getOptionFromStorage("crossHair", false));
+	menus.minimapCheckItem.setState(getOptionFromStorage("showMinimap", true));
+	menus.rightAngleWiresCheckItem.setState(getOptionFromStorage("rightAngleWires", false));
 	menus.euroResistorCheckItem.setState(euroSetting);
 	menus.euroResistorCheckItem.setCommand(
 		new Command() { public void execute(){
@@ -227,6 +235,19 @@ public class UIManager {
 		}
 	});
 	menus.printableCheckItem.setState(printable);
+
+	boolean darkMode = false;
+	try {
+	    darkMode = qp.getBooleanValue("darkMode", getOptionFromStorage("darkMode", systemPrefersDarkScheme()));
+	} catch (Exception e) { }
+	menus.darkModeCheckItem.setCommand(
+		new Command() { public void execute(){
+		    setOptionInStorage("darkMode", menus.darkModeCheckItem.getState());
+		    applyDarkMode();
+		}
+	});
+	menus.darkModeCheckItem.setState(darkMode);
+	setDarkModeClass(darkMode);
 
 	menus.conventionCheckItem.setCommand(
 		new Command() { public void execute(){
@@ -260,6 +281,16 @@ public class UIManager {
 	    layoutPanel.addEast(verticalPanel, VERTICALPANELWIDTH);
 	}
 	layoutPanel.addNorth(toolbar, TOOLBARHEIGHT);
+
+	// component palette, docked west of the canvas; hidden by default
+	paletteBar = new PaletteBar(this);
+	paletteScroll = new ScrollPanel(paletteBar);
+	paletteScroll.setStyleName("paletteScroll");
+	layoutPanel.addWest(paletteScroll, PaletteBar.WIDTH);
+	menus.paletteCheckItem.setState(getOptionFromStorage("showPalette", false));
+	paletteVisible = menus.paletteCheckItem.getState();
+	layoutPanel.setWidgetHidden(paletteScroll, !paletteVisible);
+
 	menuBar.getElement().insertFirst(menuBar.getElement().getChild(1));
 	menuBar.getElement().getFirstChildElement().setAttribute("onclick", "document.getElementsByClassName('toptrigger')[0].checked = false");
 	RootLayoutPanel.get().add(layoutPanel);
@@ -365,6 +396,7 @@ public class UIManager {
 	setGrid();
 	
 	app.mouse = mouse = new MouseManager(app, this);
+	minimap = new Minimap(this);
 	mouse.register(cv);
 	mouse.enableDisableMenuItems();
 	setiFrameHeight();
@@ -405,6 +437,8 @@ public class UIManager {
 
     	if (!app.isMobile(sidePanelCheckboxLabel))
     	    width=width - VERTICALPANELWIDTH;
+	if (paletteVisible)
+	    width -= paletteCollapsed ? PaletteBar.COLLAPSED_WIDTH : PaletteBar.WIDTH;
 	if (menus.toolbarCheckItem.getState())
 	    height -= TOOLBARHEIGHT;
 
@@ -573,7 +607,7 @@ public class UIManager {
 
         Graphics g = new Graphics(cvcontext);
 
-        if (menus.printableCheckItem.getState()) {
+        if (app.isPrintable()) {
             CircuitElm.whiteColor = Color.black;
             CircuitElm.lightGrayColor = Color.black;
             g.setColor(Color.white);
@@ -685,7 +719,16 @@ public class UIManager {
         }
 
         if (mouse.dragElm != null && (mouse.dragElm.x != mouse.dragElm.x2 || mouse.dragElm.y != mouse.dragElm.y2)) {
-            mouse.dragElm.draw(g);
+            // when drawing wires at right angles, show the L-shaped route the wire will take
+            Point bend = mouse.getRightAngleBend(mouse.dragElm);
+            if (bend != null) {
+                g.setColor(CircuitElm.selectColor);
+                g.setLineWidth(3.0);
+                g.drawLine(mouse.dragElm.x, mouse.dragElm.y, bend.x, bend.y);
+                g.drawLine(bend.x, bend.y, mouse.dragElm.x2, mouse.dragElm.y2);
+                g.setLineWidth(1.0);
+            } else
+                mouse.dragElm.draw(g);
             mouse.dragElm.drawHandles(g, CircuitElm.selectColor);
         }
 
@@ -717,6 +760,9 @@ public class UIManager {
         perfmon.startContext("drawBottomArea()");
         drawBottomArea(g);
         perfmon.stopContext();
+
+        if (minimap != null)
+            minimap.draw(g);
 
         g.setColor(Color.white);
 
@@ -777,7 +823,7 @@ public class UIManager {
 	}
 	if (app.stopMessage != null && app.circuitArea.height > canvasHeight-30)
 	    h = 30;
-	g.setColor(menus.printableCheckItem.getState() ? "#eee" : "#111");
+	g.setColor(app.isPrintable() ? "#eee" : "#111");
 	g.fillRect(leftX, app.circuitArea.height-h, app.circuitArea.width, canvasHeight - app.circuitArea.height+h);
 	g.setFont(CircuitElm.unitsFont);
 	int ct = app.scopeManager.scopeCount;
@@ -864,9 +910,65 @@ public class UIManager {
     }
 
     Color getBackgroundColor() {
-	if (menus.printableCheckItem.getState())
+	if (app.isPrintable())
 	    return Color.white;
 	return Color.black;
+    }
+
+    // ---- Dark Mode / Theming ----
+
+    // current dark mode state; static so widgets (e.g. Scrollbar) can consult
+    // it without needing a UIManager reference
+    static boolean darkModeActive;
+
+    static native boolean systemPrefersDarkScheme() /*-{
+	return !!($wnd.matchMedia && $wnd.matchMedia('(prefers-color-scheme: dark)').matches);
+    }-*/;
+
+    // read the saved dark mode preference, defaulting to the browser's
+    // prefers-color-scheme when no preference has been saved yet
+    static boolean getSavedDarkMode() {
+	boolean dark = systemPrefersDarkScheme();
+	Storage stor = Storage.getLocalStorageIfSupported();
+	if (stor != null) {
+	    String s = stor.getItem("darkMode");
+	    if (s != null)
+		dark = s.equals("true");
+	}
+	return dark;
+    }
+
+    // toggle the CSS class that themes the UI chrome (menu bar, dialogs,
+    // side panel, ...). Set on the document element so it also applies to
+    // popups attached directly to the body.
+    static void setDarkModeClass(boolean dark) {
+	darkModeActive = dark;
+	if (dark)
+	    Document.get().getDocumentElement().addClassName("darkmode");
+	else
+	    Document.get().getDocumentElement().removeClassName("darkmode");
+    }
+
+    boolean isDarkMode() { return menus.darkModeCheckItem.getState(); }
+
+    // apply the current dark mode setting to the UI chrome and canvas
+    void applyDarkMode() {
+	setDarkModeClass(isDarkMode());
+	int i;
+	if (scopeManager != null)
+	    for (i = 0; i < scopeManager.scopeCount; i++)
+		scopeManager.scopes[i].setRect(scopeManager.scopes[i].rect);
+	// redraw canvas-based scrollbars so they pick up the new palette
+	if (speedBar != null) speedBar.draw();
+	if (currentBar != null) currentBar.draw();
+	if (powerBar != null) powerBar.draw();
+	if (app.adjustables != null)
+	    for (i = 0; i != app.adjustables.size(); i++) {
+		Adjustable adj = app.adjustables.get(i);
+		if (adj.slider != null)
+		    adj.slider.draw();
+	    }
+	repaint();
     }
 
     // ---- UI Controls ----
@@ -893,12 +995,28 @@ public class UIManager {
 	setCanvasSize();
     }
 
+    void setPalette() {
+	paletteVisible = menus.paletteCheckItem.getState();
+	setOptionInStorage("showPalette", paletteVisible);
+	layoutPanel.setWidgetHidden(paletteScroll, !paletteVisible);
+	setCanvasSize();
+    }
+
+    // called by PaletteBar's collapse/expand affordance
+    void setPaletteCollapsed(boolean c) {
+	paletteCollapsed = c;
+	layoutPanel.setWidgetSize(paletteScroll, c ? PaletteBar.COLLAPSED_WIDTH : PaletteBar.WIDTH);
+	setCanvasSize();
+    }
+
     void updateToolbar() {
 	if (mouse.dragElm != null)
 	    toolbar.setModeLabel(Locale.LS("Drag Mouse"));
 	else
 	    toolbar.setModeLabel(Locale.LS("Mode: ") + app.classToLabelMap.get(mouseModeStr));
 	toolbar.highlightButton(mouseModeStr);
+	if (paletteBar != null)
+	    paletteBar.highlightButton(mouseModeStr);
     }
 
     void pushSubcircuit(CustomCompositeElm cce, Vector<CircuitElm> allElms) {
@@ -1099,6 +1217,7 @@ public class UIManager {
     		    }
     		}
     		if (code==KEY_ESCAPE){
+    			app.scopeManager.clearMeasureCursors();
     			setMouseMode(MouseManager.MODE_SELECT);
     			mouseModeStr = "Select";
 			updateToolbar();

@@ -24,6 +24,8 @@ package com.lushprojects.circuitjs1.client;
 // For information about the theory behind this, see Electronic Circuit & System Simulation Methods by Pillage
 // or https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md
 
+import java.util.Vector;
+
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.ui.MenuItem;
@@ -52,11 +54,14 @@ public class Menus {
     CheckboxMenuItem powerCheckItem;
     CheckboxMenuItem smallGridCheckItem;
     CheckboxMenuItem crossHairCheckItem;
+    CheckboxMenuItem minimapCheckItem;
+    CheckboxMenuItem rightAngleWiresCheckItem;
     CheckboxMenuItem showValuesCheckItem;
     CheckboxMenuItem conductanceCheckItem;
     CheckboxMenuItem euroResistorCheckItem;
     CheckboxMenuItem euroGatesCheckItem;
     CheckboxMenuItem printableCheckItem;
+    CheckboxMenuItem darkModeCheckItem;
     CheckboxMenuItem conventionCheckItem;
     CheckboxMenuItem noEditCheckItem;
     CheckboxMenuItem mouseWheelEditCheckItem;
@@ -87,9 +92,32 @@ public class Menus {
     CirSim sim;
     MenuBar menuBar;
     MenuBar fileMenuBar;
+    CheckboxMenuItem paletteCheckItem;
+
+    // component catalog recorded while the Draw menu is built, so the
+    // component palette (PaletteBar) shares the same data as the menus
+    static class PaletteCategory {
+	final String name;			  // untranslated category name
+	final Vector<String> labels = new Vector<String>();  // untranslated item labels
+	final Vector<String> classes = new Vector<String>(); // element class strings
+	PaletteCategory(String name_) { name = name_; }
+    }
+    Vector<PaletteCategory> paletteCategories = new Vector<PaletteCategory>();
+    private PaletteCategory currentPaletteCategory;
+    private boolean recordPalette;
 
     Menus(CirSim sim_) {
 	sim = sim_;
+    }
+
+    // start recording palette items into the named category (lookup or create)
+    private void paletteCategory(String name) {
+	if (!recordPalette)
+	    return;
+	for (PaletteCategory pc : paletteCategories)
+	    if (pc.name.equals(name)) { currentPaletteCategory = pc; return; }
+	currentPaletteCategory = new PaletteCategory(name);
+	paletteCategories.add(currentPaletteCategory);
     }
     
     public void init() {
@@ -112,6 +140,7 @@ public class Menus {
 	fileMenuBar.addItem(importFromLocalFileItem);
 	importFromTextItem = iconMenuItem("doc-text", "Import From Text...", new MyCommand("file","importfromtext"));
 	fileMenuBar.addItem(importFromTextItem);
+	fileMenuBar.addItem(iconMenuItem("doc-text", "Import SPICE Netlist...", new MyCommand("file","importspice")));
 	importFromDropboxItem = iconMenuItem("dropbox", "Import From Dropbox...", new MyCommand("file", "importfromdropbox"));
 	fileMenuBar.addItem(importFromDropboxItem);
 	if (isElectron()) {
@@ -124,15 +153,19 @@ public class Menus {
 	    exportAsLocalFileItem.setEnabled(ExportAsLocalFileDialog.downloadIsSupported());
 	    fileMenuBar.addItem(exportAsLocalFileItem);
 	}
+	fileMenuBar.addItem(iconMenuItem("floppy", "Save to Library...", new MyCommand("file", "savetolibrary")));
+	fileMenuBar.addItem(iconMenuItem("folder", "My Circuits...", new MyCommand("file", "mycircuits")));
 	exportAsUrlItem = iconMenuItem("export", "Export As Link...", new MyCommand("file","exportasurl"));
 	fileMenuBar.addItem(exportAsUrlItem);
 	exportAsTextItem = iconMenuItem("export", "Export As Text...", new MyCommand("file","exportastext"));
 	fileMenuBar.addItem(exportAsTextItem);
+	fileMenuBar.addItem(iconMenuItem("export", "Export as SPICE Netlist...", new MyCommand("file","exportspice")));
 	fileMenuBar.addItem(iconMenuItem("image", "Export As Image...", new MyCommand("file","exportasimage")));
 	fileMenuBar.addItem(iconMenuItem("image", "Copy Circuit Image to Clipboard", new MyCommand("file","copypng")));
 	fileMenuBar.addItem(iconMenuItem("image", "Export As SVG...", new MyCommand("file","exportassvg")));    	
 	fileMenuBar.addItem(iconMenuItem("microchip", "Create Subcircuit...", new MyCommand("file","createsubcircuit")));
 	fileMenuBar.addItem(iconMenuItem("magic", "Find DC Operating Point", new MyCommand("file", "dcanalysis")));
+	fileMenuBar.addItem(iconMenuItem("magic", "Frequency Response...", new MyCommand("file", "frequencyresponse")));
 	recoverItem = iconMenuItem("back-in-time", "Recover Auto-Save", new MyCommand("file","recover"));
 	fileMenuBar.addItem(recoverItem);
 	printItem = menuItemWithShortcut("print", "Print...", Locale.LS(ctrlMetaKey + "P"), new MyCommand("file","print"));
@@ -215,15 +248,31 @@ public class Menus {
 		    sim.setToolbar();
 		}
 	}));
+	m.addItem(paletteCheckItem = new CheckboxMenuItem(Locale.LS("Component Palette"),
+		new Command() { public void execute(){
+		    sim.setPalette();
+		}
+	}));
 	m.addItem(crossHairCheckItem = new CheckboxMenuItem(Locale.LS("Show Cursor Cross Hairs"),
 		new Command() { public void execute(){
 		    sim.setOptionInStorage("crossHair", crossHairCheckItem.getState());
 		}
 	}));
-	
+	m.addItem(minimapCheckItem = new CheckboxMenuItem(Locale.LS("Show Minimap"),
+		new Command() { public void execute(){
+		    sim.setOptionInStorage("showMinimap", minimapCheckItem.getState());
+		}
+	}));
+	m.addItem(rightAngleWiresCheckItem = new CheckboxMenuItem(Locale.LS("Draw Wires at Right Angles"),
+		new Command() { public void execute(){
+		    sim.setOptionInStorage("rightAngleWires", rightAngleWiresCheckItem.getState());
+		}
+	}));
+
 	m.addItem(euroResistorCheckItem = new CheckboxMenuItem(Locale.LS("European Resistors")));
 	m.addItem(euroGatesCheckItem = new CheckboxMenuItem(Locale.LS("IEC Gates")));
 	m.addItem(printableCheckItem = new CheckboxMenuItem(Locale.LS("White Background")));
+	m.addItem(darkModeCheckItem = new CheckboxMenuItem(Locale.LS("Dark Mode")));
 
 	m.addItem(conventionCheckItem = new CheckboxMenuItem(Locale.LS("Conventional Current Motion")));
 	m.addItem(noEditCheckItem = new CheckboxMenuItem(Locale.LS("Disable Editing")));
@@ -271,9 +320,13 @@ public class Menus {
 
     // this is called twice, once for the Draw menu, once for the right mouse popup menu
     public void composeMainMenu(MenuBar mainMenuBar, int num) {
+	// record the palette catalog only on the first pass
+	recordPalette = (num == 0);
+	paletteCategory("Basic");
 	makeClassCheckItems(mainMenuBar, new String[] { "Add Wire", "WireElm", "Add Routed Wire", "RoutedWireElm", "Add Resistor", "ResistorElm" });
 
     	MenuBar passMenuBar = new MenuBar(true);
+	paletteCategory("Passive Components");
 	makeClassCheckItems(passMenuBar, new String[] {
 		"Add Capacitor", "CapacitorElm",
 		"Add Capacitor (polarized)", "PolarCapacitorElm",
@@ -303,6 +356,7 @@ public class Menus {
     	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Passive Components")), passMenuBar);
 
     	MenuBar inputMenuBar = new MenuBar(true);
+	paletteCategory("Inputs and Sources");
 	makeClassCheckItems(inputMenuBar, new String[] {
 		"Add Ground", "GroundElm",
 		"Add Voltage Source (2-terminal)", "DCVoltageElm",
@@ -326,6 +380,7 @@ public class Menus {
     	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Inputs and Sources")), inputMenuBar);
     	
     	MenuBar outputMenuBar = new MenuBar(true);
+	paletteCategory("Outputs and Labels");
 	makeClassCheckItems(outputMenuBar, new String[] {
 		"Add Analog Output", "OutputElm",
 		"Add LED", "LEDElm",
@@ -355,6 +410,7 @@ public class Menus {
 	sim.register("VCCSElm", new VCCSElm(0, 0));
 
     	MenuBar activeMenuBar = new MenuBar(true);
+	paletteCategory("Active Components");
 	makeClassCheckItems(activeMenuBar, new String[] {
 		"Add Diode", "DiodeElm",
 		"Add Zener Diode", "ZenerElm",
@@ -377,9 +433,11 @@ public class Menus {
     	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Active Components")), activeMenuBar);
 
     	MenuBar activeBlocMenuBar = new MenuBar(true);
+	paletteCategory("Active Building Blocks"); // create category here to preserve menu order
     	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Active Building Blocks")), activeBlocMenuBar);
-    	
+
     	MenuBar gateMenuBar = new MenuBar(true);
+	paletteCategory("Logic Gates, Input and Output");
 	makeClassCheckItems(gateMenuBar, new String[] {
 		"Add Logic Input", "LogicInputElm",
 		"Add Logic Output", "LogicOutputElm",
@@ -395,6 +453,7 @@ public class Menus {
     	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Logic Gates, Input and Output")), gateMenuBar);
 
     	MenuBar chipMenuBar = new MenuBar(true);
+	paletteCategory("Digital Chips");
 	makeClassCheckItems(chipMenuBar, new String[] {
 		"Add D Flip-Flop", "DFlipFlopElm",
 		"Add JK Flip-Flop", "JKFlipFlopElm",
@@ -421,6 +480,7 @@ public class Menus {
     	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Digital Chips")), chipMenuBar);
     	
     	MenuBar achipMenuBar = new MenuBar(true);
+	paletteCategory("Analog and Hybrid Chips");
 	makeClassCheckItems(achipMenuBar, new String[] {
 		"Add 555 Timer", "TimerElm",
 		"Add Phase Comparator", "PhaseCompElm",
@@ -432,6 +492,7 @@ public class Menus {
     	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Analog and Hybrid Chips")), achipMenuBar);
     	
 	// do these later so all the other elements are added to the map first
+	paletteCategory("Active Building Blocks");
 	makeClassCheckItems(activeBlocMenuBar, new String[] {
 		"Add Op Amp (ideal, - on top)", "OpAmpElm",
 		"Add Op Amp (ideal, + on top)", "OpAmpSwapElm",
@@ -485,8 +546,13 @@ public class Menus {
     
     void makeClassCheckItems(MenuBar mb, String items[]) {
 	int i;
-	for (i = 0; i < items.length; i += 2)
+	for (i = 0; i < items.length; i += 2) {
 	    mb.addItem(getClassCheckItem(Locale.LS(items[i]), items[i+1]));
+	    if (recordPalette && currentPaletteCategory != null) {
+		currentPaletteCategory.labels.add(items[i]);
+		currentPaletteCategory.classes.add(items[i+1]);
+	    }
+	}
     }
 
     MenuItem menuItemWithShortcut(String icon, String text, String shortcut, MyCommand cmd) {

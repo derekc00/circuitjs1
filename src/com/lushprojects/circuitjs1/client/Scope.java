@@ -91,6 +91,12 @@ class Scope {
     static double dragStartTime = -1;
     static int cursorUnits;
     static Scope cursorScope;
+    // scope the current measurement drag started in
+    static Scope dragScope;
+
+    // persistent measurement cursors (A/B): fixed points in simulation time, placed by
+    // dragging on the scope.  They stay visible until cleared (Escape or scope menu).  -1 = not set.
+    double cursorTimeA = -1, cursorTimeB = -1;
     
     Scope(CirSim app_, SimulationManager sim_) {
     	sim = sim_;
@@ -679,7 +685,8 @@ void showPlotValue(int val, boolean b) {
     	g.restore();
     	
     	drawCursor(g);
-    	
+    	drawMeasureCursors(g);
+
     	if (plots.get(0).ptr > 5 && !manualScale) {
     	    for (i = 0; i != UNITS_COUNT; i++)
     		if (scale[i] > 1e-4 && reduceRange[i])
@@ -899,6 +906,25 @@ void showPlotValue(int val, boolean b) {
 	cursorScope = null;
 	cursorTime = -1;
     }
+
+    // called on mouse up.  If the user dragged far enough within one scope, place the
+    // persistent measurement cursors: A at the drag start time, B at the release time.
+    static void finishCursorDrag() {
+	if (dragStartTime >= 0 && cursorScope != null && cursorScope == dragScope && cursorTime >= 0) {
+	    double ts = cursorScope.sim.maxTimeStep * cursorScope.speed;
+	    // require a drag of a few pixels so plain clicks don't place cursors
+	    if (Math.abs(cursorTime - dragStartTime) >= ts*3) {
+		cursorScope.cursorTimeA = Math.min(dragStartTime, cursorTime);
+		cursorScope.cursorTimeB = Math.max(dragStartTime, cursorTime);
+	    }
+	}
+	dragStartTime = -1;
+	dragScope = null;
+    }
+
+    boolean cursorsActive() { return cursorTimeA >= 0 && cursorTimeB >= 0; }
+
+    void clearMeasureCursors() { cursorTimeA = cursorTimeB = -1; }
     
     double mouseXToTime(int mouseX) {
 	if (isTriggered())
@@ -924,6 +950,7 @@ void showPlotValue(int val, boolean b) {
 	if (plot2d.enabled || fftPlot.enabled || visiblePlots.size() == 0)
 	    return;
 	dragStartTime = mouseXToTime(mouseX);
+	dragScope = this;
     }
     
     // find selected plot
@@ -1064,6 +1091,82 @@ void showPlotValue(int val, boolean b) {
 	
     }
 
+    // draw the persistent measurement cursors (A/B) and their readout box.
+    // the transient hover cursor is handled by drawCursor(); this draws the cursors
+    // placed by dragging, which stay until cleared.
+    void drawMeasureCursors(Graphics g) {
+	if (!cursorsActive() || plot2d.enabled || visiblePlots.size() == 0)
+	    return;
+	int xa = timeToX(cursorTimeA);
+	int xb = timeToX(cursorTimeB);
+	boolean aVisible = xa >= rect.x && xa < rect.x+rect.width;
+	boolean bVisible = xb >= rect.x && xb < rect.x+rect.width;
+	g.setColor(CircuitElm.whiteColor);
+	if (aVisible) {
+	    g.drawLine(xa, rect.y, xa, rect.y+rect.height);
+	    g.drawString("A", xa+3, rect.y+rect.height-4);
+	}
+	if (bVisible) {
+	    g.drawLine(xb, rect.y, xb, rect.y+rect.height);
+	    g.drawString("B", xb+3, rect.y+rect.height-4);
+	}
+
+	String lines[] = new String[visiblePlots.size()+2];
+	String colors[] = new String[visiblePlots.size()+2];
+	int ct = 0;
+	lines[ct++] = "A=" + CircuitElm.getTimeText(cursorTimeA) + "  B=" + CircuitElm.getTimeText(cursorTimeB);
+	double deltaT = cursorTimeB - cursorTimeA;
+	String dtText = "Δt=" + CircuitElm.getTimeText(deltaT);
+	if (deltaT > 0)
+	    dtText += "  1/Δt=" + CircuitElm.getUnitText(1/deltaT, "Hz");
+	lines[ct++] = dtText;
+
+	int i;
+	for (i = 0; i != visiblePlots.size(); i++) {
+	    ScopePlot plot = visiblePlots.get(i);
+	    double va = drawPlotDot(g, plot, xa);
+	    double vb = drawPlotDot(g, plot, xb);
+	    String s = "";
+	    if (!Double.isNaN(va))
+		s += "A=" + plot.getUnitText(va);
+	    if (!Double.isNaN(vb))
+		s += (s.length() == 0 ? "" : "  ") + "B=" + plot.getUnitText(vb);
+	    if (!Double.isNaN(va) && !Double.isNaN(vb))
+		s += "  Δ=" + plot.getUnitText(vb-va);
+	    if (s.length() > 0) {
+		colors[ct] = plot.color;
+		lines[ct++] = s;
+	    }
+	}
+	drawMeasureCursorInfo(g, lines, colors, ct);
+    }
+
+    // draw the measurement readout box in the top right corner of the scope
+    void drawMeasureCursorInfo(Graphics g, String lines[], String colors[], int ct) {
+	int szw = 0, szh = 15*ct+4;
+	int i;
+	for (i = 0; i != ct; i++) {
+	    int w = (int)g.context.measureText(lines[i]).getWidth();
+	    if (w > szw)
+		szw = w;
+	}
+	int bx = rect.x + rect.width - szw - 12;
+	if (bx < rect.x)
+	    bx = rect.x;
+	int by = rect.y + 2;
+	g.setColor(app.isPrintable() ? Color.white : Color.black);
+	g.fillRect(bx-4, by, szw+8, szh);
+	g.setColor(CircuitElm.lightGrayColor);
+	g.drawRect(bx-4, by, szw+8, szh);
+	for (i = 0; i != ct; i++) {
+	    if (colors[i] != null)
+		g.setColor(colors[i]);
+	    else
+		g.setColor(CircuitElm.whiteColor);
+	    g.drawString(lines[i], bx, by+15*(i+1)-3);
+	}
+    }
+
     boolean canShowRMS() {
 	if (visiblePlots.size() == 0)
 	    return false;
@@ -1134,12 +1237,20 @@ void showPlotValue(int val, boolean b) {
     void exportCSV() {
 	if (visiblePlots.size() == 0)
 	    return;
+	CirSim.dialogShowing = new ScopeCSVExportDialog(this);
+    }
+
+    // build CSV text: a time column, then min and max sample columns for each visible
+    // plot (each on-screen pixel column stores the min and max of the samples it covers)
+    String buildCSV() {
+	if (visiblePlots.size() == 0)
+	    return "";
 	StringBuilder sb = new StringBuilder();
 	sb.append("time");
 	int i;
 	for (i = 0; i != visiblePlots.size(); i++) {
 	    ScopePlot plot = visiblePlots.get(i);
-	    String name = plot.elm.getClass().getSimpleName().replace("Elm", "");
+	    String name = plot.elm == null ? "plot" : plot.elm.getClass().getSimpleName().replace("Elm", "");
 	    String unit = getScaleUnitsText(plot.units);
 	    sb.append(",\"" + name + " " + unit + " min\"");
 	    sb.append(",\"" + name + " " + unit + " max\"");
@@ -1165,7 +1276,7 @@ void showPlotValue(int val, boolean b) {
 	    }
 	    sb.append("\n");
 	}
-	downloadCSV(sb.toString(), "scope-data.csv");
+	return sb.toString();
     }
 
     static native void downloadCSV(String data, String filename) /*-{

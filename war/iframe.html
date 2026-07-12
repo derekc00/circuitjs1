@@ -3,6 +3,31 @@
 <head>
 <meta charset="ISO-8859-1">
 <title>Insert title here</title>
+<style>
+html.darkmode {
+	color-scheme: dark;
+}
+html.darkmode body {
+	background-color: #1e1e1e;
+	color: #d4d4d4;
+}
+</style>
+<script>
+(function() {
+    function updateTheme() {
+        var dark = false;
+        try {
+            var dm = localStorage.getItem("darkMode");
+            dark = (dm === null) ? !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                                 : dm === "true";
+        } catch (e) {}
+        document.documentElement.className = dark ? "darkmode" : "";
+    }
+    updateTheme();
+    // follow live dark mode toggles made in the main window
+    window.addEventListener('storage', updateTheme);
+})();
+</script>
 </head>
 <body>
 </body>

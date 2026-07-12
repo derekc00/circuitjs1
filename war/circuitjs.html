@@ -2,13 +2,37 @@
 <html>
   <head>
   <link rel="manifest" href="/circuit/manifest.json">
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
     <!-- Properties can be specified to influence deferred binding -->
     <meta name='gwt:property' content='locale=en_UK'>
     
     
     <!-- Titles are optional, but useful -->
     <title></title>
+
+<!-- Apply the saved (or system default) dark mode before anything renders,
+     to avoid a flash of the wrong theme.  The full dark palette lives in the
+     GWT module stylesheet (style.css); this only covers the page background
+     until the module loads. -->
+<style>
+html.darkmode {
+	color-scheme: dark;
+	background-color: #1e1e1e;
+}
+html.darkmode body {
+	background-color: #1e1e1e;
+	color: #d4d4d4;
+}
+</style>
+<script>
+try {
+    var cjs1_dm = localStorage.getItem("darkMode");
+    if (cjs1_dm === null ? !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                         : cjs1_dm === "true")
+        document.documentElement.className += " darkmode";
+} catch (e) {}
+</script>
 
 <style>
 .disabled {

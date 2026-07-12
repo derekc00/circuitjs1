@@ -77,7 +77,7 @@ class BoxElm extends GraphicElm {
     int getShortcut() { return 0; }
 
     int getMouseDistance(int gx, int gy) {
-	int thresh = 10;
+	int thresh = MouseManager.hitTestThreshold();
 	int dx1 = Math.abs(gx-x);
 	int dy1 = Math.abs(gy-y);
 	int dx2 = Math.abs(gx-x2);

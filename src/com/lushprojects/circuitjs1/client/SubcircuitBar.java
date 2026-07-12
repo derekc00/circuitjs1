@@ -19,6 +19,7 @@ public class SubcircuitBar extends FlowPanel {
     private boolean hasContext;
 
     public SubcircuitBar() {
+	getElement().addClassName("subcircuit-bar"); // hook for dark mode CSS
 	Style style = getElement().getStyle();
 	style.setProperty("background", "rgba(248,248,248,0.85)");
 	style.setPosition(Style.Position.ABSOLUTE);

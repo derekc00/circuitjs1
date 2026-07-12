@@ -249,7 +249,19 @@ public class CirSim implements NativePreviewHandler {
 	setSimRunning(running);
     }
 
-    boolean isPrintable() { return menus.printableCheckItem.getState(); }
+    // set temporarily during exports (e.g. printing) to force a white background
+    // regardless of the dark mode setting
+    boolean printableOverride;
+
+    // effective white-background rule: dark mode forces a dark canvas; the
+    // "White Background" option only applies when dark mode is off.
+    boolean isPrintable() {
+	if (printableOverride)
+	    return true;
+	return menus.printableCheckItem.getState() && !isDarkMode();
+    }
+
+    boolean isDarkMode() { return menus.darkModeCheckItem.getState(); }
 
     // delegation methods for UIManager
     void setOptionInStorage(String key, boolean val) { ui.setOptionInStorage(key, val); }
@@ -415,6 +427,8 @@ public class CirSim implements NativePreviewHandler {
 		if (circuitText != null) {
 			loader.readCircuit(circuitText, flags);
 			ExportAsLocalFileDialog.setLastFileName(null);
+			if (!subcircuitsOnly)
+			    CircuitLibrary.currentName = null;
 			allowSave(false);
 		}
     }
@@ -538,6 +552,8 @@ public class CirSim implements NativePreviewHandler {
     void setGrid() { ui.setGrid(); }
 
     void setToolbar() { ui.setToolbar(); }
+
+    void setPalette() { ui.setPalette(); }
 
 
     void setMouseMode(int mode) { ui.setMouseMode(mode); }
