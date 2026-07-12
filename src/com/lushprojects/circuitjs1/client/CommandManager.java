@@ -263,6 +263,8 @@ public class CommandManager {
     			s.selectY();
     		if (item=="reset")
     			s.resetGraph(true);
+    		if (item=="clearcursors")
+    			s.clearMeasureCursors();
     		if (item=="exportcsv")
     			s.exportCSV();
     		if (item=="properties")

@@ -1101,7 +1101,7 @@ public class MouseManager implements MouseDownHandler, MouseMoveHandler, MouseUp
     public void onMouseUp(MouseUpEvent e) {
     	e.preventDefault();
     	mouseDragging=false;
-    	Scope.dragStartTime = -1;
+    	Scope.finishCursorDrag();
 
     	// click to clear selection
     	if (tempMouseMode == MODE_SELECT && selectedArea == null)
