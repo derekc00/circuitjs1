@@ -51,6 +51,12 @@ public class CommandManager {
     	if (item=="mycircuits") {
     		app.dialogShowing = new CircuitLibraryDialog(app);
     	}
+    	if (item=="importspice") {
+    		app.dialogShowing = new SpiceImporter(app);
+    	}
+    	if (item=="exportspice") {
+    		SpiceExporter.doExport(app);
+    	}
     	if (item=="exportasurl") {
     		doExportAsUrl();
     		app.unsavedChanges = false;
