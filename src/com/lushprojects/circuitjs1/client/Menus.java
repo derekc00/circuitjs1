@@ -280,6 +280,7 @@ public class Menus {
 		"Add Inductor", "InductorElm",
 		"Add Switch", "SwitchElm",
 		"Add Push Switch", "PushSwitchElm",
+		"Add One-Shot Switch (Timed)", "OneShotSwitchElm",
 		"Add SPDT Switch", "Switch2Elm",
 		"Add DPDT Switch", "DPDTSwitchElm",
 		"Add Make-Before-Break Switch", "MBBSwitchElm",
