@@ -27,6 +27,8 @@ public class JSInterface {
     // returns false if no switch with that label was found.
     boolean toggleSwitch(String name) {
 	int i;
+	if (name == null)
+	    return false;
 	for (i = 0; i != app.elmList.size(); i++) {
 	    CircuitElm ce = app.getElm(i);
 	    if (ce instanceof SwitchElm) {
@@ -34,7 +36,6 @@ public class JSInterface {
 		if (name.equals(se.label)) {
 		    se.toggle();
 		    app.needAnalyze();
-		    app.repaint();
 		    return true;
 		}
 	    }
@@ -43,9 +44,12 @@ public class JSInterface {
     }
 
     // set the value of the sidebar slider whose label matches name.
-    // the value is clamped to the slider's range.  returns false if not found.
+    // the value is clamped to the slider's range and quantized to the
+    // slider's 100 steps, as if dragged.  returns false if not found.
     boolean setSliderValue(String name, double value) {
 	int i;
+	if (name == null)
+	    return false;
 	for (i = 0; i != app.adjustables.size(); i++) {
 	    Adjustable adj = app.adjustables.get(i);
 	    if (adj.sharedSlider == null && adj.slider != null &&
@@ -89,13 +93,16 @@ public class JSInterface {
 		ScopePlot p = s.visiblePlots.get(j);
 		if (p.minValues == null)
 		    continue;
+		double ts = p.scopePlotSpeed * app.sim.maxTimeStep;
 		JavaScriptObject po = makePlotObject(so,
 		    p.elm == null ? "" : p.elm.getElmType(),
-		    Scope.getScaleUnitsText(p.units),
-		    p.scopePlotSpeed * app.sim.maxTimeStep);
+		    Scope.getScaleUnitsText(p.units), ts);
 		int spc = p.scopePointCount;
 		int k;
 		for (k = 0; k != spc; k++) {
+		    // skip buckets from before the simulation started
+		    if (app.sim.t - (spc - 1 - k) * ts < 0)
+			continue;
 		    int ip = (p.ptr + 1 + k) & (spc - 1);
 		    addPlotSample(po, p.minValues[ip], p.maxValues[ip]);
 		}
@@ -144,8 +151,8 @@ public class JSInterface {
 	    isRunning: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::simIsRunning()(); } ),
 	    getNodeVoltage: $entry(function(n) { return that.@com.lushprojects.circuitjs1.client.JSInterface::getLabeledNodeVoltage(Ljava/lang/String;)(n); } ),
 	    setExtVoltage: $entry(function(n, v) { that.@com.lushprojects.circuitjs1.client.JSInterface::setExtVoltage(Ljava/lang/String;D)(n, v); } ),
-	    toggleSwitch: $entry(function(n) { return that.@com.lushprojects.circuitjs1.client.JSInterface::toggleSwitch(Ljava/lang/String;)(n); } ),
-	    setSliderValue: $entry(function(n, v) { return that.@com.lushprojects.circuitjs1.client.JSInterface::setSliderValue(Ljava/lang/String;D)(n, v); } ),
+	    toggleSwitch: $entry(function(n) { return that.@com.lushprojects.circuitjs1.client.JSInterface::toggleSwitch(Ljava/lang/String;)(n == null ? null : n); } ),
+	    setSliderValue: $entry(function(n, v) { return that.@com.lushprojects.circuitjs1.client.JSInterface::setSliderValue(Ljava/lang/String;D)(n == null ? null : n, v); } ),
 	    getScopeData: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::getScopeData()(); } ),
 	    getElements: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::getJSElements()(); } ),
 	    getCircuitAsSVG: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::doExportAsSVGFromAPI()(); } ),
