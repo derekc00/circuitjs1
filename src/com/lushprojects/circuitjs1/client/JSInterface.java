@@ -23,6 +23,88 @@ public class JSInterface {
 	}
     }
 
+    // toggle the first switch whose label matches name, as if it were clicked.
+    // returns false if no switch with that label was found.
+    boolean toggleSwitch(String name) {
+	int i;
+	for (i = 0; i != app.elmList.size(); i++) {
+	    CircuitElm ce = app.getElm(i);
+	    if (ce instanceof SwitchElm) {
+		SwitchElm se = (SwitchElm) ce;
+		if (name.equals(se.label)) {
+		    se.toggle();
+		    app.needAnalyze();
+		    app.repaint();
+		    return true;
+		}
+	    }
+	}
+	return false;
+    }
+
+    // set the value of the sidebar slider whose label matches name.
+    // the value is clamped to the slider's range.  returns false if not found.
+    boolean setSliderValue(String name, double value) {
+	int i;
+	for (i = 0; i != app.adjustables.size(); i++) {
+	    Adjustable adj = app.adjustables.get(i);
+	    if (adj.sharedSlider == null && adj.slider != null &&
+		    name.equals(adj.sliderText)) {
+		adj.setSliderValue(value);
+		adj.execute();
+		return true;
+	    }
+	}
+	return false;
+    }
+
+    native JavaScriptObject makeScopeObject(String label) /*-{
+	return { label: label, plots: [] };
+    }-*/;
+    native JavaScriptObject makePlotObject(JavaScriptObject scope, String elm,
+					   String units, double samplePeriod) /*-{
+	var plot = { elm: elm, units: units, samplePeriod: samplePeriod,
+		     min: [], max: [] };
+	scope.plots.push(plot);
+	return plot;
+    }-*/;
+    native void addPlotSample(JavaScriptObject plot, double mn, double mx) /*-{
+	plot.min.push(mn);
+	plot.max.push(mx);
+    }-*/;
+
+    // return an array of scope data objects, one per visible scope:
+    // { label, plots: [ { elm, units, samplePeriod, min: [], max: [] } ] }
+    // min/max are in chronological order (oldest first); each entry is the
+    // min/max of the values seen during one sample period.
+    JsArray<JavaScriptObject> getScopeData() {
+	int i;
+	JsArray<JavaScriptObject> arr = getJSArray();
+	ScopeManager sm = app.scopeManager;
+	for (i = 0; i != sm.scopeCount; i++) {
+	    Scope s = sm.scopes[i];
+	    JavaScriptObject so = makeScopeObject(s.getScopeLabelOrText());
+	    int j;
+	    for (j = 0; j != s.visiblePlots.size(); j++) {
+		ScopePlot p = s.visiblePlots.get(j);
+		if (p.minValues == null)
+		    continue;
+		JavaScriptObject po = makePlotObject(so,
+		    p.elm == null ? "" : p.elm.getElmType(),
+		    Scope.getScaleUnitsText(p.units),
+		    p.scopePlotSpeed * app.sim.maxTimeStep);
+		int spc = p.scopePointCount;
+		int k;
+		for (k = 0; k != spc; k++) {
+		    int ip = (p.ptr + 1 + k) & (spc - 1);
+		    addPlotSample(po, p.minValues[ip], p.maxValues[ip]);
+		}
+	    }
+	    arr.push(so);
+	}
+	return arr;
+    }
+
     native JsArray<JavaScriptObject> getJSArray() /*-{ return []; }-*/;
 
     JsArray<JavaScriptObject> getJSElements() {
@@ -62,6 +144,9 @@ public class JSInterface {
 	    isRunning: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::simIsRunning()(); } ),
 	    getNodeVoltage: $entry(function(n) { return that.@com.lushprojects.circuitjs1.client.JSInterface::getLabeledNodeVoltage(Ljava/lang/String;)(n); } ),
 	    setExtVoltage: $entry(function(n, v) { that.@com.lushprojects.circuitjs1.client.JSInterface::setExtVoltage(Ljava/lang/String;D)(n, v); } ),
+	    toggleSwitch: $entry(function(n) { return that.@com.lushprojects.circuitjs1.client.JSInterface::toggleSwitch(Ljava/lang/String;)(n); } ),
+	    setSliderValue: $entry(function(n, v) { return that.@com.lushprojects.circuitjs1.client.JSInterface::setSliderValue(Ljava/lang/String;D)(n, v); } ),
+	    getScopeData: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::getScopeData()(); } ),
 	    getElements: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::getJSElements()(); } ),
 	    getCircuitAsSVG: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::doExportAsSVGFromAPI()(); } ),
 	    exportCircuit: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::dumpCircuit()(); } ),

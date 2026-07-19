@@ -1418,6 +1418,10 @@ public class SimulationManager {
 	    if (!delayWireProcessing)
 		calcWireCurrents();
 	    app.onTimeStep();
+	    // stop iterating if an element changed the circuit topology in stepFinished()
+	    // (e.g. a one-shot switch reopening); it gets reanalyzed before the next frame
+	    if (app.analyzeFlag)
+		break;
 	    if (TestManager.theManager != null && TestManager.theManager.checkTime())
 		break;
 	    // save last node voltages so we can restart the next iteration if necessary
