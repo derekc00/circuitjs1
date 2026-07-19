@@ -38,6 +38,8 @@ class OneShotSwitchElm extends SwitchElm {
 			    StringTokenizer st) {
 	super(xa, ya, xb, yb, f, st);
 	duration = Double.parseDouble(st.nextToken());
+	if (duration <= 0)
+	    duration = 1;
     }
     int getDumpType() { return 437; }
 
@@ -49,6 +51,8 @@ class OneShotSwitchElm extends SwitchElm {
     void undumpXml(XMLDeserializer xml) {
 	super.undumpXml(xml);
 	duration = xml.parseDoubleAttr("dur", duration);
+	if (duration <= 0)
+	    duration = 1;
     }
 
     void reset() {
@@ -56,13 +60,17 @@ class OneShotSwitchElm extends SwitchElm {
 	position = 1;
     }
 
+    // arm the timer whenever we close, including when toggled indirectly by a
+    // label-linked switch (SwitchElm.toggle() calls simpleToggle() on links)
+    void simpleToggle() {
+	position = (position == 1) ? 0 : 1;
+	if (position == 0)
+	    pulseStartTime = sim.t;
+    }
+
     void toggle() {
 	TestManager.recordSwitchToggle(this);
-	if (position == 1) {
-	    position = 0;
-	    pulseStartTime = sim.t;
-	} else
-	    position = 1;
+	simpleToggle();
     }
 
     void stepFinished() {
